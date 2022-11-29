@@ -1,13 +1,12 @@
 #include <ArduinoBLE.h>
 
 #define NBR_CENTRALS 2
+#define NBR_WEIGHTS 24
 
 typedef struct __attribute__( ( packed ) )
 {
   uint8_t turn;
-  int16_t w0;
-  int16_t w1;
-  int16_t w2;
+  int16_t w[NBR_WEIGHTS];
 } weights_data_t;
 
 weights_data_t weightsData;
@@ -78,29 +77,29 @@ unsigned long old_time;
 
 void loop() {
   unsigned long current_time = millis();
-  /*if (current_time - old_time > 1000) {
-    weightsCharacteristic.writeValue((uint8_t *)&weightsData, sizeof(weightsData), true);
-    old_time = current_time;
-  }*/
+ 
   BLE.poll();
-      if (writeCharacteristic.written()) {
-      //old_time = current_time;
+      if (writeCharacteristic.written() || current_time - old_time > 1000) {
+      old_time = current_time;
       // Below can be used to read new weights and applying them to current weights, for now we just copy
       weightsData = *((weights_data_t *)writeCharacteristic.value());
       //weightsCharacteristic.readValue((uint8_t *)&weightsData, sizeof(weightsData)); // Also works, but copies directly
       Serial.print("Peripheral Weights Value: ");
       Serial.print(weightsData.turn);
       Serial.print(" ");
-      Serial.print(weightsData.w0);
+      Serial.print(weightsData.w[0]);
       Serial.print(" ");
-      Serial.print(weightsData.w1);
+      Serial.print(weightsData.w[1]);
       Serial.print(" ");
-      Serial.println(weightsData.w2);
+      Serial.print(weightsData.w[2]);
+      Serial.print(" ");
+      Serial.println(weightsData.w[NBR_WEIGHTS - 1]);
   
       if (weightsData.turn == 0) {
         weightsData.turn = (++lastTurn - 1) % NBR_CENTRALS + 1;
-        weightsData.w0++;
-        weightsData.w2--;
+        weightsData.w[1]++;
+        weightsData.w[2]--;
+        weightsData.w[NBR_WEIGHTS - 1]++;
         //delay(123);
         readCharacteristic.writeValue((uint8_t *)&weightsData, sizeof(weightsData), true);
         Serial.println("Updating weights");

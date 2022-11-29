@@ -1,13 +1,12 @@
 #include <ArduinoBLE.h>
 
-#define CENTRAL_ID 1
+#define CENTRAL_ID 2
+#define NBR_WEIGHTS 24
 
 typedef struct __attribute__( ( packed ) )
 {
   uint8_t turn;
-  int16_t w0;
-  int16_t w1;
-  int16_t w2;
+  int16_t w[NBR_WEIGHTS];
 } weights_data_t;
 
 weights_data_t weightsData;
@@ -52,22 +51,26 @@ void listenWeights(BLEDevice peripheral) {
   while (peripheral.connected()) {
     unsigned long now = millis();
     if (readCharacteristic.valueUpdated() || now - last_read_time > 500) {
-      last_read_time =
+      last_read_time = now;
       readCharacteristic.readValue((uint8_t *)&weightsData, sizeof(weightsData));
       Serial.print("Central Weights Value: ");
       Serial.print(weightsData.turn);
       Serial.print(" ");
-      Serial.print(weightsData.w0);
+      Serial.print(weightsData.w[0]);
       Serial.print(" ");
-      Serial.print(weightsData.w1);
+      Serial.print(weightsData.w[1]);
       Serial.print(" ");
-      Serial.println(weightsData.w2);
+      Serial.print(weightsData.w[2]);
+      Serial.print(" ");
+      Serial.println(weightsData.w[NBR_WEIGHTS - 1]);
       if (weightsData.turn == CENTRAL_ID) {
         weightsData.turn = 0;
   
         Serial.println("Updating weights and sending to master");
-        weightsData.w1++;
-        weightsData.w2++;
+        weightsData.w[0]++;
+        weightsData.w[1]++;
+        weightsData.w[2]++;
+        weightsData.w[NBR_WEIGHTS - 1]++;
         //delay(185);
         writeCharacteristic.writeValue((uint8_t *)&weightsData, sizeof(weightsData), true);
       }
