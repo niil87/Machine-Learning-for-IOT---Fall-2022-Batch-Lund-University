@@ -1,6 +1,13 @@
 #include <Arduino_OV767X.h>
 
-byte pixels[320 * 240 * 2]; // QCIF: 176x144 X 2 bytes per pixel (RGB565)
+#define USE_LOW_RES 1
+
+#if USE_LOW_RES
+  byte pixels[176 * 144 * 2];  //QCIF: 176x144 X 2 bytes per pixel (RGB565)
+#else
+  byte pixels[320 * 240 * 2]; //QVGA
+#endif
+
 
 void setup() {
   Serial.begin(9600);
@@ -9,7 +16,11 @@ void setup() {
   Serial.println("OV767X Camera Capture");
   Serial.println();
 
+#if USE_LOW_RES
+  if (!Camera.begin(QCIF, RGB565, 1)) {
+#else
   if (!Camera.begin(QVGA, RGB565, 1)) {
+#endif
     Serial.println("Failed to initialize camera!");
     while (1);
   }
