@@ -1,77 +1,112 @@
 #include <ArduinoBLE.h>
 
-#define CENTRAL_ID 2
-#define NBR_WEIGHTS 24
+#define CENTRAL_ID 1
+#define DYN_NBR_WEIGHTS 3600 // MUST BE MULTIPLE OF BLE_NBR_WEIGHTS!
+#define BLE_NBR_WEIGHTS 24 
+#define NBR_BATCHES_ITER (DYN_NBR_WEIGHTS / BLE_NBR_WEIGHTS)
+
+#define DEBUG 1
 
 typedef struct __attribute__( ( packed ) )
 {
-  uint8_t turn;
+  int8_t turn;
   uint8_t batch_id;
-  int16_t w[NBR_WEIGHTS];
-} weights_data_t;
+  int16_t w[BLE_NBR_WEIGHTS];
+} ble_data_t;
 
 /* ------GLOBAL DATA------ */
-weights_data_t weightsData;
+int16_t dyn_weights[DYN_NBR_WEIGHTS];
+ble_data_t bleData;
 BLEDevice peripheral;
 
 BLECharacteristic readCharacteristic;
 BLECharacteristic writeCharacteristic;
 
+/* ------DEBUG------ */
+#if DEBUG
+void PRINT_BLE(bool isSending = true) {
+  if (isSending) {
+    Serial.print("Sending BLE Values. Turn: ");
+  } else {
+    Serial.print("Receiving BLE Values. Turn: ");
+  }
+  Serial.print(bleData.turn);
+  Serial.print(", batch_id: ");
+  Serial.print(bleData.batch_id);
+  Serial.print(", weights: ");
+  for (int i = 0; i < BLE_NBR_WEIGHTS; i++) {
+    Serial.print(bleData.w[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
+void PRINT_WEIGHTS() {
+  Serial.print("Weights Value: ");
+  for (int i = 0; i < DYN_NBR_WEIGHTS; i++) {
+    Serial.print(dyn_weights[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+#endif
+
 /* ------ML CODE------ */
 void do_training() {
-  Serial.println("Training");
 
-  Serial.print("Central Weights Value: ");
-  Serial.print(weightsData.turn);
-  Serial.print(" ");
-  Serial.print(weightsData.w[0]);
-  Serial.print(" ");
-  Serial.print(weightsData.w[1]);
-  Serial.print(" ");
-  Serial.print(weightsData.w[2]);
-  Serial.print(" ");
-  Serial.println(weightsData.w[NBR_WEIGHTS - 1]);
+#if DEBUG
+  Serial.println("Central Training");
+  PRINT_WEIGHTS();
+#endif
+  memset(dyn_weights, 0, DYN_NBR_WEIGHTS * sizeof(bleData.w[0]));
+  for (int i = 0; i < DYN_NBR_WEIGHTS; i++) {
+    //dyn_weights[i] = 1;
+    dyn_weights[i] = i;
+  }
+  //dyn_weights[0] = 1;
+ // dyn_weights[CENTRAL_ID] = 1;
+ // dyn_weights[DYN_NBR_WEIGHTS - 1] = 1;
 
-  weightsData.w[0] = 1;
-  weightsData.w[CENTRAL_ID] = 1;
-  weightsData.w[NBR_WEIGHTS - 1] = 1;
-  Serial.println("Updating weights and sending to master");
   //delay(250);
 }
 
 /* ------BLUETOOTH CODE------ */
-unsigned long last_read_time = 0;
-
 void loopPeripheral() {
   while (peripheral.connected()) {
-    unsigned long now = millis();
-    // Has been notified, or timeout?
-    if (readCharacteristic.valueUpdated() || now - last_read_time > 10000) {
-      last_read_time = now;
-
+    // Has been notified?
+    if (readCharacteristic.valueUpdated()) {
       // Fetch from peripheral
-      readCharacteristic.read();
-
-      // Read first byte to see turn in message (message type)
-      uint8_t receivedTurn = readCharacteristic[0];
-      uint8_t batch_id = readCharacteristic[1];
-      Serial.println(batch_id);
+      readCharacteristic.readValue((byte *)&bleData, sizeof(bleData));
+#if DEBUG
+        PRINT_BLE(false);
+#endif
 
       // Is batch, i.e. all new weights before training?
-      if (receivedTurn == 1) {
-        // Copy weights (for now not batch), can also use [] to avoid copy
-        //readCharacteristic.readValue((byte *)&weightsData, sizeof(weightsData));
+      if (bleData.turn == 1) {
+        // Copy weights to local weight vector
+        memcpy(dyn_weights + bleData.batch_id * BLE_NBR_WEIGHTS, bleData.w, BLE_NBR_WEIGHTS * sizeof(bleData.w[0]));
 
         // Calculate our updated weights
-        do_training();
+        if (bleData.batch_id == NBR_BATCHES_ITER - 1) {
+          // Got all data for this iteration
+          do_training();
+        }
       }
 
       // Does the master want our weights?
-      if (receivedTurn == CENTRAL_ID) {
-        weightsData.turn = 0;
+      if (bleData.turn == CENTRAL_ID && (bleData.batch_id == NBR_BATCHES_ITER - 1 || CENTRAL_ID != 1)) {
+        bleData.turn = 0;
 
         // Should also be sent in batch
-        writeCharacteristic.writeValue((byte *)&weightsData, sizeof(weightsData));
+        for (int i = 0; i < NBR_BATCHES_ITER; i++) {
+          bleData.batch_id = i;
+          // Copy weights
+          memcpy(bleData.w, dyn_weights + i * BLE_NBR_WEIGHTS, BLE_NBR_WEIGHTS * sizeof(bleData.w[0]));
+          writeCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
+#if DEBUG
+          PRINT_BLE(true);
+#endif
+        }
       }
     }
   }
@@ -79,21 +114,31 @@ void loopPeripheral() {
 
 void connectPeripheral() {
   // connect to the peripheral
+#if DEBUG
   Serial.println("Connecting ...");
+#endif
 
   if (peripheral.connect()) {
+#if DEBUG
     Serial.println("Connected");
+#endif
   } else {
+#if DEBUG
     Serial.println("Failed to connect!");
+#endif
     return;
   }
 
   // discover peripheral attributes
   Serial.println("Discovering attributes ...");
   if (peripheral.discoverAttributes()) {
+#if DEBUG
     Serial.println("Attributes discovered");
+#endif
   } else {
+#if DEBUG
     Serial.println("Attribute discovery failed!");
+#endif
     peripheral.disconnect();
     return;
   }
@@ -103,12 +148,16 @@ void connectPeripheral() {
   writeCharacteristic = peripheral.characteristic("19b10001-e8f2-537e-4f6c-d104768a1215");
 
   if (!readCharacteristic || !writeCharacteristic) {
+#if DEBUG
     Serial.println("Peripheral does not have WeightsCharacteristic characteristic!");
+#endif
     peripheral.disconnect();
     return;
   }
   if (!readCharacteristic.subscribe()) {
+#if DEBUG
     Serial.println("Subscription failed!");
+#endif
     peripheral.disconnect();
     return;
   }
@@ -126,7 +175,9 @@ void setup() {
   // initialize the BLE hardware
   BLE.begin();
 
+#if DEBUG
   Serial.println("BLE Central - Weights control");
+ #endif
 
   // start scanning for peripherals
   BLE.scanForUuid("19b10000-e8f2-537e-4f6c-d104768a1214");
@@ -138,6 +189,7 @@ void loop() {
 
   if (peripheral) {
     // discovered a peripheral, print out address, local name, and advertised service
+#if DEBUG
     Serial.print("Found ");
     Serial.print(peripheral.address());
     Serial.print(" '");
@@ -145,6 +197,7 @@ void loop() {
     Serial.print("' ");
     Serial.print(peripheral.advertisedServiceUuid());
     Serial.println();
+#endif
 
     if (peripheral.localName() != "MLMaster") {
       return;
