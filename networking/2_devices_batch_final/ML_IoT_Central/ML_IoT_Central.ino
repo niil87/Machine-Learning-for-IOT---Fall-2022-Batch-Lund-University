@@ -5,7 +5,7 @@
 #define BLE_NBR_WEIGHTS 24 
 #define NBR_BATCHES_ITER (DYN_NBR_WEIGHTS / BLE_NBR_WEIGHTS)
 
-#define DEBUG 1
+#define DEBUG 0
 
 typedef struct __attribute__( ( packed ) )
 {
