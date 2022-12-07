@@ -1,12 +1,12 @@
+// Code developed by Nikhil Challa as part of ML in IOT Course - year : 2022
+// Team members : Simon Erlandsson
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<time.h>
 #include<math.h>
 
 #include <ArduinoBLE.h>
-
-//#include <EloquentTinyML.h>
-//#include <eloquent_tinyml/tensorflow.h>
 
 #include "cnn_data.h" // network weights
 
@@ -20,26 +20,25 @@
 	
 // NN parameters
 #define LEARNING_RATE 0.1
-#define EPOCH 1000
-#define IN_VEC_SIZE 75
-#define OUT_VEC_SIZE 3
+#define EPOCH 20
+#define IN_VEC_SIZE first_layer_input_cnt
+#define OUT_VEC_SIZE classes_cnt
 
 // Defining the network structure. 
 // Input size is equal to first layer size. Same for output except we need to do one additional function
 // Final Output we will need to handle differently depending on case, in ours its softmax
-static const int NN_def[] = {IN_VEC_SIZE,  75, 35, 15, OUT_VEC_SIZE};
+static const int NN_def[] = {IN_VEC_SIZE,  20, OUT_VEC_SIZE};
 size_t numLayers = sizeof(NN_def)/sizeof(NN_def[0]);
 // size of the input to NN
 
 
 // size of different vectors
-size_t numValData = sizeof(validation_labels) / sizeof(int);
-size_t numTrainData = sizeof(train_labels) / sizeof(int);
+size_t numValData = validation_data_cnt;
+size_t numTrainData = train_data_cnt;
 
 // creating array index to randomnize order of training data
 //int indxArray[numTrainData];
 int indxArray[73];
-int shuffle = 0;
 
 
 // dummy input for testing
@@ -89,6 +88,7 @@ double AccFunction (int layerIndx, int nodeIndx) {
 		}
 		
 		A += L[layerIndx].Neu[nodeIndx].W[k] * L[layerIndx-1].Neu[k].X;	
+
 	}
 	
 	if (L[layerIndx].Neu[nodeIndx].dB != 0.0 ) {
@@ -191,9 +191,7 @@ void forwardProp() {
 			}
 		} else {
 			// for subsequent layers, we need to perform RELU
-			// printf("Layer:%d\n",i);
 			for (int j = 0; j < NN_def[i];j++) {
-				// printf("Accumulation value:%f\n",AccFunction(i,j));
 				L[i].Neu[j].X = ACT(AccFunction(i,j));
 			}	
 		}
@@ -223,51 +221,44 @@ void backwardProp() {
 	}
 }
 
-// function to set the input and output vectors for training or inference
-// dataType = 0 Training data
-// dataType = 1 Validation data
-void generateData(int indx, int dataType) {
-	
-	// for every epoch, we need to perform indx randomnization for better training
-	if (dataType == 0) {
-		if (shuffle == 1) {
-			size_t i;
-			for (i = 0; i < numTrainData - 1; i++) 
-			{
-			  size_t j = i + rand() / (RAND_MAX / (numTrainData - i) + 1);
-			  int t = indxArray[j];
-			  indxArray[j] = indxArray[i];
-			  indxArray[i] = t;
-			}
-		}
-		shuffle = 0;
-
-		// Train Data
-		for (int j =0; j < OUT_VEC_SIZE; j++) {
-			hat_y[j] = 0.0;
-		}
-		hat_y[ indxArray[indx] ] = 1.0;
-		
-		for (int j =0; j < IN_VEC_SIZE; j++) {
-			input[j] = cnn_train_data[ indxArray[indx] ][j];
-		}
-	
-	} else {
-		
-		for (int j =0; j < IN_VEC_SIZE; j++) {
-			input[j] = cnn_validation_data[indx][j];
-		}
-	}
+void shuffleIndx() 
+{
+    for (int i = 0; i < numTrainData - 1; i++) 
+    {
+      size_t j = i + rand() / (RAND_MAX / (numTrainData - i) + 1);
+      int t = indxArray[j];
+      indxArray[j] = indxArray[i];
+      indxArray[i] = t;
+    }
 
 }
+
+// function to set the input and output vectors for training or inference
+void generateTrainVectors(int indx) {
+
+  // Train Data
+  for (int j = 0; j < OUT_VEC_SIZE; j++) {
+    hat_y[j] = 0.0;
+  }
+  hat_y[ train_labels[ indxArray[indx] ] ] = 1.0;
+
+  for (int j = 0; j < IN_VEC_SIZE; j++) {
+    input[j] = cnn_train_data[ indxArray[indx] ][j];
+  }
+
+}
+
 
 
 
 void setup() {
 	// put your setup code here, to run once:
 	Serial.begin(9600);
-	Serial.println("Hello World!");
-	
+
+  // this delay is only for analysis as serial tx is happening before port is ready, 
+  // do not use this for demo
+	delay(5000);
+
 	// randomly initialize the seed based on time
 	srand(time(0));
 	
@@ -276,42 +267,46 @@ void setup() {
   }
 
 	createNetwork();
-
-	// looping to check if forward+backward converges
+ 
 	for (int i = 0; i < EPOCH; i++) {
-		Serial.print("Loop count:");
+		Serial.print("Epoch count:");
 		Serial.print(i);
 		Serial.println();
-		shuffle = 1;
+
+    // reordering the index for more randomness and faster learning
+		shuffleIndx();
 		
-    Serial.println("#################### starting forward + Backward propagation ##################### \n");
+    // starting forward + Backward propagation
 		for (int j = 0;j < numTrainData;j++) {
-			generateData(j,0);	
+			generateTrainVectors(j);	
 			forwardProp();
 			backwardProp();
 		}
-
 	}
-	
+
 	// checking accuracy if validation data
-	int ErrorCount = 0;
-	int maxIndx = 0;
+	int correctCount = 0;
+
 	for (int i = 0; i < numValData; i++) {
-		generateData(i,1);
+		int maxIndx = 0;
+		for (int j = 0; j < IN_VEC_SIZE; j++) {
+			input[j] = cnn_validation_data[i][j];
+		}
+
 		forwardProp();
 		for (int j = 1; j < OUT_VEC_SIZE;j++) {
 			if (y[maxIndx] < y[j]) {
 				maxIndx = j;
 			}
 		}
-		if (maxIndx != validation_labels[i]) {
-			ErrorCount+=1;
+		if (maxIndx == validation_labels[i]) {
+			correctCount+=1;
 		}
 	}
 	
-	float Accuracy = ErrorCount/numValData;
-	Serial.println("## Accuracy:");
-	Serial.print(Accuracy);
+	float Accuracy = correctCount*1.0/numValData;
+	Serial.print("Validation Accuracy:");
+	Serial.println(Accuracy);
 
 }
 
