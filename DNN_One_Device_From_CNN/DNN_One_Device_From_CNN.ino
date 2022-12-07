@@ -255,7 +255,7 @@ void generateData(int indx, int dataType) {
 	} else {
 		
 		for (int j =0; j < IN_VEC_SIZE; j++) {
-			input[j] = cnn_validation_data[ indxArray[indx] ][j];
+			input[j] = cnn_validation_data[indx][j];
 		}
 	}
 
@@ -284,28 +284,10 @@ void setup() {
 		Serial.println();
 		shuffle = 1;
 		
+    Serial.println("#################### starting forward + Backward propagation ##################### \n");
 		for (int j = 0;j < numTrainData;j++) {
-			generateData(j,0);
-			
-			Serial.println("#################### starting forward propagation ##################### \n");
+			generateData(j,0);	
 			forwardProp();
-			
-/* 			if (i > EPOCH - 20) {
-			  
-				for (int j = 0; j < NN_def[numLayers-1];j++) {
-					Serial.print(y[j]);
-					Serial.println();
-				}
-			  
-				Serial.println();
-			  
-				for (int j = 0; j < NN_def[numLayers-1];j++) {
-				Serial.print(input[j]);
-				Serial.println();
-				}
-			} */
-			
-			Serial.println("#################### starting backward propagation ###################### \n\n\n");
 			backwardProp();
 		}
 
