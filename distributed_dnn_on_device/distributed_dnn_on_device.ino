@@ -139,7 +139,7 @@ void setup() {
   Serial.println(weights_bias_cnt);
 
   // Allocate common weight vector, and pass to setupNN, setupBLE
-  float* WeightBiasPtr = (float*) calloc(weights_bias_cnt * sizeof(float));
+  float* WeightBiasPtr = (float*) calloc(weights_bias_cnt, sizeof(float));
 
   setupNN(WeightBiasPtr);
   setupBLE(WeightBiasPtr);
