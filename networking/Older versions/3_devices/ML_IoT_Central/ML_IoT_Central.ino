@@ -1,3 +1,4 @@
+// This file was written by Simon Erlandsson, with Nikhil Challa as team member.
 #include <ArduinoBLE.h>
 
 #define CENTRAL_ID 2

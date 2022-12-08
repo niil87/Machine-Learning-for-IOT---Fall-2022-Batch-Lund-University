@@ -1,3 +1,4 @@
+// File is written by Evelyn Beck, with very minor modifications by Simon Erlandsson
 #include <Arduino_OV767X.h>
 
 #define USE_LOW_RES 1

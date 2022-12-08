@@ -1,3 +1,5 @@
+// This file was written by Simon Erlandsson, with Nikhil Challa as team member.
+''
 #include <ArduinoBLE.h>
 
 typedef struct __attribute__( ( packed ) )

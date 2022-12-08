@@ -1,3 +1,7 @@
+// This file was written by Simon Erlandsson, with Nikhil Challa as team member.
+// It has been tested and works for 2 devices, but much of the code is generalized
+// to allow for more devices, though testing and development of multi-device
+// was paused due to lack of time. Runs on Arduino 33 BLE.
 #include <ArduinoBLE.h>
 
 #define CENTRAL_ID 1
