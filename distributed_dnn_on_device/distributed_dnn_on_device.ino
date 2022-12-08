@@ -9,6 +9,15 @@
 #include <ArduinoBLE.h>
 
 #include "cnn_data.h"     // network weights
+
+// NN parameters
+#define LEARNING_RATE 0.01
+#define EPOCH 25
+
+// DO NOT TOUCH THE FIRST AND LAST ENTRIES OF BELOW ARRAY, YOU CAN MODIFY ANY OF OTHER ENTRIES
+// like increase the number of layers, change the nodes per layer
+static const int NN_def[] = {first_layer_input_cnt,  20, classes_cnt};
+
 #include "NN_functions.h" // Neural Network specific functions and definitions
 
 

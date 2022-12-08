@@ -6,16 +6,11 @@
 #define fRAND ( rand()*1.0/RAND_MAX-0.5 )*2   // random number generator between -1 and +1 
 #define ACT(a) MAX(a,0)    // RELU(a)
 
-// NN parameters
-#define LEARNING_RATE 0.01
-#define EPOCH 25
+
 #define IN_VEC_SIZE first_layer_input_cnt
 #define OUT_VEC_SIZE classes_cnt
 
-// Defining the network structure. 
-// Input size is equal to first layer size. Same for output except we need to do one additional function
-// Final Output we will need to handle differently depending on case, in ours its softmax
-static const int NN_def[] = {IN_VEC_SIZE,  20, OUT_VEC_SIZE};
+
 size_t numLayers = sizeof(NN_def)/sizeof(NN_def[0]);
 // size of the input to NN
 
