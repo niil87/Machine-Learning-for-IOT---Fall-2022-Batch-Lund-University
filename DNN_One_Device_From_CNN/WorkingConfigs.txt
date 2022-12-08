@@ -1,7 +1,7 @@
 Config1
 1 hidden layer : 20 nodes
-learning rate : 0.1
-Epoch : 20
+learning rate : 0.01
+Epoch : 25
 Validation Accuracy : 97%
 
 Config2
