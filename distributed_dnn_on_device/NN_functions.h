@@ -91,8 +91,8 @@ neuron createNeuron(int numInput) {
 
   N1.B = fRAND;
   N1.numInput = numInput;
-  N1.W = (float*)malloc(numInput * sizeof(float));
-  N1.dW = (float*)malloc(numInput * sizeof(float));
+  N1.W = (float*)calloc(numInput, sizeof(float));
+  N1.dW = (float*)calloc(numInput, sizeof(float));
   // initializing values of W to rand and dW to 0
   int Sum = 0;
   for (int i = 0; i < numInput; i++) {
@@ -110,14 +110,14 @@ layer createLayer (int numNeuron) {
 
   layer L1;
   L1.numNeuron = numNeuron;
-  L1.Neu = (neuron*)malloc(numNeuron * sizeof(neuron));
+  L1.Neu = (neuron*)calloc(numNeuron, sizeof(neuron));
   return L1;
 
 }
 
 void createNetwork() {
 
-  L = (layer*)malloc(numLayers * sizeof(layer));
+  L = (layer*)calloc(numLayers, sizeof(layer));
 
   // First layer has no input weights
   L[0] = createLayer(NN_def[0]);

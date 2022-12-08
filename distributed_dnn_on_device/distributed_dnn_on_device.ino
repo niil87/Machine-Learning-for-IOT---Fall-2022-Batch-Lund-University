@@ -13,7 +13,7 @@ int iter_cnt = 0;
 int weights_bias_cnt = 0;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE MASTER
+#define DEVICE_TYPE SLAVE
 #define DEBUG 1
 
 /* 
@@ -35,7 +35,7 @@ int weights_bias_cnt = 0;
 
 // DO NOT TOUCH THE FIRST AND LAST ENTRIES OF BELOW ARRAY, YOU CAN MODIFY ANY OF OTHER ENTRIES
 // like increase the number of layers, change the nodes per layer
-static const int NN_def[] = {first_layer_input_cnt,  20, classes_cnt};
+static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
 /* ------- END CONFIG ------- */
 
@@ -52,10 +52,14 @@ static const int NN_def[] = {first_layer_input_cnt,  20, classes_cnt};
 #endif
 
 void destroy() {
+  Serial.println("Finished training, shutting down.");
+  printAccuracy();
+  BLE.stopAdvertise();
   BLE.disconnect();
   while (1) ;
 }
 
+/* Called by BLE for MASTER when all weights from SLAVE(s) have been received */
 #if DEVICE_TYPE == MASTER
 void aggregate_weights() {
 #if DEBUG
@@ -76,10 +80,9 @@ void aggregate_weights() {
 }
 #endif
 
+/* Called by BLE when all weights have been received/aggregated*/
 void do_training() {
 #if DEVICE_TYPE == MASTER
-  Serial.println("Finished training:");
-  printAccuracy();
   if (iter_cnt > EPOCH) destroy();
 #endif
 
@@ -127,11 +130,16 @@ void setup() {
   // the code is only for Fully connected layers
   weights_bias_cnt = calcTotalWeightsBias();
 
+  // weights_bias_cnt has to be multiple of BLE_NBR_WEIGHTS
+  int remainder = weights_bias_cnt % BLE_NBR_WEIGHTS;
+  if (remainder != 0)
+    weights_bias_cnt += BLE_NBR_WEIGHTS - remainder;
+
   Serial.print("The total number of weights and bias:");
   Serial.println(weights_bias_cnt);
 
   // Allocate common weight vector, and pass to setupNN, setupBLE
-  float* WeightBiasPtr = (float*) malloc(weights_bias_cnt * sizeof(float));
+  float* WeightBiasPtr = (float*) calloc(weights_bias_cnt * sizeof(float));
 
   setupNN(WeightBiasPtr);
   setupBLE(WeightBiasPtr);
