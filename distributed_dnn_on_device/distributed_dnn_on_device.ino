@@ -16,88 +16,16 @@
 
 // DO NOT TOUCH THE FIRST AND LAST ENTRIES OF BELOW ARRAY, YOU CAN MODIFY ANY OF OTHER ENTRIES
 // like increase the number of layers, change the nodes per layer
-static const int NN_def[] = {first_layer_input_cnt,  20, classes_cnt};
-
-#include "NN_functions.h" // Neural Network specific functions and definitions
-
-
-
-
+static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
 // size of different vectors
 size_t numValData = validation_data_cnt;
 size_t numTrainData = train_data_cnt;
 
-
+#include "NN_functions.h" // Neural Network specific functions and definitions
 
 // to store all the weights and bias for bluetooth transmission
 float* WeightBiasPtr;
-
-
-	
-
-
-
-
-
-
-
-
-
-// 0 -> pack vector for bluetooth transmission
-// 1 -> unpack vector for updating weights after averaging 
-// 2 -> average between values in pointer and location network values, and update both local and pointer value
-void packUnpackVector(int Type)
-{
-  int ptrCount = 0;
-  if (Type == 0) {
-    // Propagating through network, we store all weights first and then bias. 
-    // we start with left most layer, and top most node or lowest to highest index
-    for (int i = 1; i < numLayers; i++) {
-      for (int j = 0; j < NN_def[i]; j++) {
-        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
-          WeightBiasPtr[ptrCount] =  L[i].Neu[j].W[k];
-          ptrCount += 1;
-        }
-        WeightBiasPtr[ptrCount] =  L[i].Neu[j].B;
-        ptrCount += 1;
-      }
-    }
-
-    //Serial.print("Total count when packing:");
-    //Serial.println(ptrCount);
-
-  } else if (Type == 0) {
-    // Propagating through network, we store all weights first and then bias. 
-    // we start with left most layer, and top most node or lowest to highest index
-    for (int i = 1; i < numLayers; i++) {
-      for (int j = 0; j < NN_def[i]; j++) {
-        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
-           L[i].Neu[j].W[k] = WeightBiasPtr[ptrCount];
-          ptrCount += 1;
-        }
-        L[i].Neu[j].B = WeightBiasPtr[ptrCount];
-        ptrCount += 1;
-      }
-    }
-  } else {
-    // Propagating through network, we store all weights first and then bias. 
-    // we start with left most layer, and top most node or lowest to highest index
-    for (int i = 1; i < numLayers; i++) {
-      for (int j = 0; j < NN_def[i]; j++) {
-        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
-          L[i].Neu[j].W[k] = (WeightBiasPtr[ptrCount] + L[i].Neu[j].W[k] )/2;
-          WeightBiasPtr[ptrCount] = L[i].Neu[j].W[k];
-          ptrCount += 1;
-        }
-        L[i].Neu[j].B = ( WeightBiasPtr[ptrCount] + L[i].Neu[j].B )/2;
-        WeightBiasPtr[ptrCount] = L[i].Neu[j].B;
-        ptrCount += 1;
-      }
-    }
-  }
-
-}
 
 
 void setup() {
@@ -110,8 +38,7 @@ void setup() {
 
   // We need to count how many weights and bias we need to transfer
   // the code is only for Fully connected layers
-  int NosWeightsBias = CalcTotalWeightsBias();
-
+  int NosWeightsBias = calcTotalWeightsBias();
 
   Serial.print("The total number of weights and bias:");
   Serial.println(NosWeightsBias);
@@ -123,10 +50,6 @@ void setup() {
 
 	// randomly initialize the seed based on time
 	srand(time(0));
-	
-  for (int i = 0; i <  numTrainData; i ++ ) {
-    indxArray[i] = i;
-  }
 
 	createNetwork();
  
@@ -147,60 +70,16 @@ void setup() {
 
     // pack the vector for bluetooth transmission
     forwardProp();
-    packUnpackVector(0);
+    packUnpackVector(0,WeightBiasPtr);
     // send bluetooth
     // do averaging if its master
-    packUnpackVector(2);
+    packUnpackVector(2,WeightBiasPtr);
     // receive bluetooth
-    packUnpackVector(1);
+    packUnpackVector(1,WeightBiasPtr);
 
 	}
 
-	// checking accuracy if training data
-	int correctCount = 0;
-
-  for (int i = 0; i < numTrainData; i++) {
-		int maxIndx = 0;
-		for (int j = 0; j < IN_VEC_SIZE; j++) {
-			input[j] = cnn_train_data[i][j];
-		}
-
-		forwardProp();
-		for (int j = 1; j < OUT_VEC_SIZE;j++) {
-			if (y[maxIndx] < y[j]) {
-				maxIndx = j;
-			}
-		}
-		if (maxIndx == train_labels[i]) {
-			correctCount+=1;
-		}
-	}
-	
-	float Accuracy = correctCount*1.0/numTrainData;
-	Serial.print("Training Accuracy:");
-	Serial.println(Accuracy);
-
-  correctCount = 0;
-	for (int i = 0; i < numValData; i++) {
-		int maxIndx = 0;
-		for (int j = 0; j < IN_VEC_SIZE; j++) {
-			input[j] = cnn_validation_data[i][j];
-		}
-
-		forwardProp();
-		for (int j = 1; j < OUT_VEC_SIZE;j++) {
-			if (y[maxIndx] < y[j]) {
-				maxIndx = j;
-			}
-		}
-		if (maxIndx == validation_labels[i]) {
-			correctCount+=1;
-		}
-	}
-	
-	Accuracy = correctCount*1.0/numValData;
-	Serial.print("Validation Accuracy:");
-	Serial.println(Accuracy);
+  printAccuracy();
 
 }
 

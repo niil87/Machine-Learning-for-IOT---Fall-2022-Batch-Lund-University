@@ -125,6 +125,11 @@ void createNetwork() {
 			L[i].Neu[j] = createNeuron(NN_def[i-1]);
 		}
 	}
+
+  // creating indx array for shuffle function to be used later
+  for (int i = 0; i <  numTrainData; i ++ ) {
+    indxArray[i] = i;
+  }
 	
 }
 
@@ -227,7 +232,7 @@ void shuffleIndx()
     }
 }
 
-int CalcTotalWeightsBias()
+int calcTotalWeightsBias()
 {
   int Count = 0;
   for (int i = 0; i < numLayers-1; i++) {
@@ -235,4 +240,110 @@ int CalcTotalWeightsBias()
   }
 
   return Count;
+}
+
+void printAccuracy()
+{
+  // checking accuracy if training data
+	int correctCount = 0;
+
+  for (int i = 0; i < numTrainData; i++) {
+		int maxIndx = 0;
+		for (int j = 0; j < IN_VEC_SIZE; j++) {
+			input[j] = cnn_train_data[i][j];
+		}
+
+		forwardProp();
+		for (int j = 1; j < OUT_VEC_SIZE;j++) {
+			if (y[maxIndx] < y[j]) {
+				maxIndx = j;
+			}
+		}
+		if (maxIndx == train_labels[i]) {
+			correctCount+=1;
+		}
+	}
+	
+	float Accuracy = correctCount*1.0/numTrainData;
+	Serial.print("Training Accuracy:");
+	Serial.println(Accuracy);
+
+  correctCount = 0;
+	for (int i = 0; i < numValData; i++) {
+		int maxIndx = 0;
+		for (int j = 0; j < IN_VEC_SIZE; j++) {
+			input[j] = cnn_validation_data[i][j];
+		}
+
+		forwardProp();
+		for (int j = 1; j < OUT_VEC_SIZE;j++) {
+			if (y[maxIndx] < y[j]) {
+				maxIndx = j;
+			}
+		}
+		if (maxIndx == validation_labels[i]) {
+			correctCount+=1;
+		}
+	}
+	
+	Accuracy = correctCount*1.0/numValData;
+	Serial.print("Validation Accuracy:");
+	Serial.println(Accuracy);
+}
+
+
+
+// 0 -> pack vector for creating vector based on local NN for bluetooth transmission
+// 1 -> unpack vector for updating weights on local NN after receiving vector via bluetooth transmission
+// 2 -> average between values in pointer and location network values, and update both local NN and pointer value
+void packUnpackVector(int Type, float* arrayPtr)
+{
+  int ptrCount = 0;
+  if (Type == 0) {
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+          arrayPtr[ptrCount] =  L[i].Neu[j].W[k];
+          ptrCount += 1;
+        }
+        arrayPtr[ptrCount] =  L[i].Neu[j].B;
+        ptrCount += 1;
+      }
+    }
+
+    //Serial.print("Total count when packing:");
+    //Serial.println(ptrCount);
+
+  } else if (Type == 0) {
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+           L[i].Neu[j].W[k] = arrayPtr[ptrCount];
+          ptrCount += 1;
+        }
+        L[i].Neu[j].B = arrayPtr[ptrCount];
+        ptrCount += 1;
+      }
+    }
+  } else {
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+          L[i].Neu[j].W[k] = (arrayPtr[ptrCount] + L[i].Neu[j].W[k] )/2;
+          arrayPtr[ptrCount] = L[i].Neu[j].W[k];
+          ptrCount += 1;
+        }
+        L[i].Neu[j].B = ( arrayPtr[ptrCount] + L[i].Neu[j].B )/2;
+        arrayPtr[ptrCount] = L[i].Neu[j].B;
+        ptrCount += 1;
+      }
+    }
+  }
+
 }
