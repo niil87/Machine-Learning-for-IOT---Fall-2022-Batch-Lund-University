@@ -8,13 +8,27 @@
 #include<time.h>
 #include<math.h>
 
-#include "cnn_data.h"     // training and validation data
 int iter_cnt = 0;
 int weights_bias_cnt = 0;
+extern const int first_layer_input_cnt;
+extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE SLAVE
-#define DEBUG 1
+#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
+#define DEBUG 0
+
+/*
+ *  Should MASTER and SLAVE use different datasets? Ex. one label is only present in the training set
+ *  for one of the devices. Makes the distribution more obvious.
+ */
+#define USE_BIASED_DATASETS 1
+
+/*
+ *  Should the incoming weights be saved (and taken into account) or ignored? Can be used to
+ *  test the accuracy if only training locally, using the device's own data.
+ *  BLE is still used, to synchronize between iterations.
+ */
+#define USE_DISTRIBUTED_WEIGHTS 1
 
 /* 
  *  DYN_NBR_WEIGHTS defines how many weights that should be transfered via BLE in total/iteration.
@@ -32,6 +46,7 @@ int weights_bias_cnt = 0;
 
 // NN parameters
 #define LEARNING_RATE 0.01
+#define EPOCH 50 
 
 // DO NOT TOUCH THE FIRST AND LAST ENTRIES OF BELOW ARRAY, YOU CAN MODIFY ANY OF OTHER ENTRIES
 // like increase the number of layers, change the nodes per layer
@@ -39,15 +54,23 @@ static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
 /* ------- END CONFIG ------- */
 
+// Training and Validation data
+#if USE_BIASED_DATASETS && DEVICE_TYPE == MASTER
+#include "cnn_data_biased_1.h"  
+#elif USE_BIASED_DATASETS && DEVICE_TYPE == SLAVE
+#include "cnn_data_biased_2.h"
+#else
+#include "cnn_data.h"  
+#endif
+    
 #include "NN_functions.h" // Neural Network specific functions and definitions
 
 #if DEVICE_TYPE == MASTER
-#define EPOCH 15
-#define NBR_CENTRALS 1
+#define NBR_CENTRALS 1 // Config
 #include "BLE_peripheral.h"
 
-#else if DEVICE_TYPE == SLAVE
-#define CENTRAL_ID 1
+#elif DEVICE_TYPE == SLAVE
+#define CENTRAL_ID 1 // Config
 #include "BLE_central.h"
 #endif
 
@@ -69,11 +92,13 @@ void aggregate_weights() {
   Serial.println("Accuracy before aggregation:");
   printAccuracy();
 
+#if USE_DISTRIBUTED_WEIGHTS
   // Merge incoming weights with masters stored weights
   packUnpackVector(AVERAGE);
 
   // Export the new weights to slave(s)
   packUnpackVector(PACK);
+#endif
 
   Serial.println("Accuracy after aggregation:");
   printAccuracy();
@@ -83,11 +108,11 @@ void aggregate_weights() {
 /* Called by BLE when all weights have been received/aggregated*/
 void do_training() {
 #if DEVICE_TYPE == MASTER
-  if (iter_cnt > EPOCH) destroy();
+  if (iter_cnt >= EPOCH) destroy();
 #endif
 
 // Slave has to unpack from BLE while this is done in the aggregation for the master
-#if DEVICE_TYPE == SLAVE
+#if DEVICE_TYPE == SLAVE && USE_DISTRIBUTED_WEIGHTS
   packUnpackVector(UNPACK);
 #endif
 
@@ -96,7 +121,7 @@ void do_training() {
   PRINT_WEIGHTS();
 #endif
 
-  Serial.print("Epoch count:");
+  Serial.print("Epoch count (training count): ");
   Serial.print(++iter_cnt);
   Serial.println();
 
@@ -114,7 +139,9 @@ void do_training() {
   forwardProp();
 #if DEVICE_TYPE == SLAVE
   printAccuracy();
+#if USE_DISTRIBUTED_WEIGHTS
   packUnpackVector(PACK);
+#endif
 #endif
 }
 
@@ -130,12 +157,16 @@ void setup() {
   // the code is only for Fully connected layers
   weights_bias_cnt = calcTotalWeightsBias();
 
+#if !USE_DISTRIBUTED_WEIGHTS
+  weights_bias_cnt = BLE_NBR_WEIGHTS; // Since weights are not being used, only a packet for synchronization is needed
+#endif
+
   // weights_bias_cnt has to be multiple of BLE_NBR_WEIGHTS
   int remainder = weights_bias_cnt % BLE_NBR_WEIGHTS;
   if (remainder != 0)
     weights_bias_cnt += BLE_NBR_WEIGHTS - remainder;
 
-  Serial.print("The total number of weights and bias:");
+  Serial.print("The total number of weights and bias used for BLE: ");
   Serial.println(weights_bias_cnt);
 
   // Allocate common weight vector, and pass to setupNN, setupBLE

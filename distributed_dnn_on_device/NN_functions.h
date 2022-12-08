@@ -268,7 +268,7 @@ void printAccuracy()
   }
 
   float Accuracy = correctCount * 1.0 / numTrainData;
-  Serial.print("Training Accuracy:");
+  Serial.print("Training Accuracy: ");
   Serial.println(Accuracy);
 
   correctCount = 0;
@@ -290,7 +290,7 @@ void printAccuracy()
   }
 
   Accuracy = correctCount * 1.0 / numValData;
-  Serial.print("Validation Accuracy:");
+  Serial.print("Validation Accuracy: ");
   Serial.println(Accuracy);
 }
 
