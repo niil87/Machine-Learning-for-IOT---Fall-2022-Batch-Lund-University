@@ -19,15 +19,15 @@
 
 	
 // NN parameters
-#define LEARNING_RATE 0.1
-#define EPOCH 20
+#define LEARNING_RATE 0.01
+#define EPOCH 30
 #define IN_VEC_SIZE first_layer_input_cnt
 #define OUT_VEC_SIZE classes_cnt
 
 // Defining the network structure. 
 // Input size is equal to first layer size. Same for output except we need to do one additional function
 // Final Output we will need to handle differently depending on case, in ours its softmax
-static const int NN_def[] = {IN_VEC_SIZE,  20, OUT_VEC_SIZE};
+static const int NN_def[] = {IN_VEC_SIZE,  10,3, OUT_VEC_SIZE};
 size_t numLayers = sizeof(NN_def)/sizeof(NN_def[0]);
 // size of the input to NN
 
@@ -37,17 +37,18 @@ size_t numValData = validation_data_cnt;
 size_t numTrainData = train_data_cnt;
 
 // creating array index to randomnize order of training data
-//int indxArray[numTrainData];
-int indxArray[73];
+int indxArray[train_data_cnt];
 
 
 // dummy input for testing
-double input[IN_VEC_SIZE];
+float input[IN_VEC_SIZE];
 
 // dummy output for testing
-double hat_y[OUT_VEC_SIZE];    // target output
-double y[OUT_VEC_SIZE];        // output after forward propagation
+float hat_y[OUT_VEC_SIZE];    // target output
+float y[OUT_VEC_SIZE];        // output after forward propagation
 
+// to store all the weights and bias for bluetooth transmission
+float* WeightBiasPtr;
 
 // Convention:
 // Aggregated results from all weights to node is A
@@ -56,14 +57,14 @@ double y[OUT_VEC_SIZE];        // output after forward propagation
 // Bias will be represented by B
 typedef struct neuron_t {
 	int numInput;
-	double* W;     
-	double B;
-	double X;
+	float* W;     
+	float B;
+	float X;
 	
 	// For back propagation, convention, dA means dL/dA or partial derivative of Loss over Accumulative output
-	double* dW;
-	double dA;
-	double dB;
+	float* dW;
+	float dA;
+	float dB;
 	
 } neuron;
 
@@ -76,8 +77,8 @@ typedef struct layer_t {
 layer* L = NULL;
 
 
-double AccFunction (int layerIndx, int nodeIndx) {
-	double A = 0;
+float AccFunction (int layerIndx, int nodeIndx) {
+	float A = 0;
 
 	for (int k = 0; k < NN_def[layerIndx - 1]; k++) {
 
@@ -108,8 +109,8 @@ neuron createNeuron(int numInput) {
 
 	N1.B = fRAND;
 	N1.numInput = numInput;
-	N1.W = (double*)malloc(numInput*sizeof(double));
-	N1.dW = (double*)malloc(numInput*sizeof(double));
+	N1.W = (float*)malloc(numInput*sizeof(float));
+	N1.dW = (float*)malloc(numInput*sizeof(float));
 	// initializing values of W to rand and dW to 0
 	int Sum = 0;
 	for (int i=0; i < numInput; i++) {
@@ -150,9 +151,9 @@ void createNetwork() {
 
 
 // this function is to calculate dA
-double dLossCalc( int layerIndx, int nodeIndx) {
+float dLossCalc( int layerIndx, int nodeIndx) {
 	
-	double Sum = 0;
+	float Sum = 0;
 	int outputSize = NN_def[numLayers-1];
 	// for the last layer, we use complex computation
 	if (layerIndx == numLayers - 1) {
@@ -175,7 +176,7 @@ double dLossCalc( int layerIndx, int nodeIndx) {
 
 void forwardProp() {
 	
-	double Fsum = 0;
+	float Fsum = 0;
 	// Propagating through network
 	for (int i = 0; i < numLayers; i++) {
 		// assigning node values straight from input for first layer
@@ -213,7 +214,6 @@ void backwardProp() {
 
 			for (int k = 0; k < NN_def[i - 1]; k++) {
 				L[i].Neu[j].dW[k] = -LEARNING_RATE * L[i].Neu[j].dA * L[i-1].Neu[k].X;
-
 			}
 			L[i].Neu[j].dB = -LEARNING_RATE * L[i].Neu[j].dA;
 
@@ -230,7 +230,6 @@ void shuffleIndx()
       indxArray[j] = indxArray[i];
       indxArray[i] = t;
     }
-
 }
 
 // function to set the input and output vectors for training or inference
