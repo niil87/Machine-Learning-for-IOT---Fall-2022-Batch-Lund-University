@@ -231,3 +231,13 @@ void shuffleIndx()
       indxArray[i] = t;
     }
 }
+
+int CalcTotalWeightsBias()
+{
+  int Count = 0;
+  for (int i = 0; i < numLayers-1; i++) {
+    Count += NN_def[i]*NN_def[i+1] + NN_def[i+1];
+  }
+
+  return Count;
+}

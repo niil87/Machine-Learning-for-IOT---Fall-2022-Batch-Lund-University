@@ -35,19 +35,58 @@ float* WeightBiasPtr;
 
 
 
-// 0 -> pack vector
-// 1 -> unpack vector
+// 0 -> pack vector for bluetooth transmission
+// 1 -> unpack vector for updating weights after averaging 
+// 2 -> average between values in pointer and location network values, and update both local and pointer value
 void packUnpackVector(int Type)
 {
+  int ptrCount = 0;
   if (Type == 0) {
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+          WeightBiasPtr[ptrCount] =  L[i].Neu[j].W[k];
+          ptrCount += 1;
+        }
+        WeightBiasPtr[ptrCount] =  L[i].Neu[j].B;
+        ptrCount += 1;
+      }
+    }
 
+    //Serial.print("Total count when packing:");
+    //Serial.println(ptrCount);
 
-
-
+  } else if (Type == 0) {
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+           L[i].Neu[j].W[k] = WeightBiasPtr[ptrCount];
+          ptrCount += 1;
+        }
+        L[i].Neu[j].B = WeightBiasPtr[ptrCount];
+        ptrCount += 1;
+      }
+    }
   } else {
-
+    // Propagating through network, we store all weights first and then bias. 
+    // we start with left most layer, and top most node or lowest to highest index
+    for (int i = 1; i < numLayers; i++) {
+      for (int j = 0; j < NN_def[i]; j++) {
+        for (int k = 0; k < L[i].Neu[j].numInput; k++) {
+          L[i].Neu[j].W[k] = (WeightBiasPtr[ptrCount] + L[i].Neu[j].W[k] )/2;
+          WeightBiasPtr[ptrCount] = L[i].Neu[j].W[k];
+          ptrCount += 1;
+        }
+        L[i].Neu[j].B = ( WeightBiasPtr[ptrCount] + L[i].Neu[j].B )/2;
+        WeightBiasPtr[ptrCount] = L[i].Neu[j].B;
+        ptrCount += 1;
+      }
+    }
   }
-
 
 }
 
@@ -62,10 +101,8 @@ void setup() {
 
   // We need to count how many weights and bias we need to transfer
   // the code is only for Fully connected layers
-  int NosWeightsBias = 0;
-  for (int i = 0; i < numLayers-1; i++) {
-    NosWeightsBias += NN_def[i]*NN_def[i+1] + NN_def[i+1];
-  }
+  int NosWeightsBias = CalcTotalWeightsBias();
+
 
   Serial.print("The total number of weights and bias:");
   Serial.println(NosWeightsBias);
@@ -100,7 +137,13 @@ void setup() {
 		}
 
     // pack the vector for bluetooth transmission
-
+    forwardProp();
+    packUnpackVector(0);
+    // send bluetooth
+    // do averaging if its master
+    packUnpackVector(2);
+    // receive bluetooth
+    packUnpackVector(1);
 
 	}
 
