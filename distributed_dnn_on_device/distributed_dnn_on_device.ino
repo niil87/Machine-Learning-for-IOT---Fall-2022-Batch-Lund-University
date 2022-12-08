@@ -1,89 +1,148 @@
-// Code developed by Nikhil Challa as part of ML in IOT Course - year : 2022
-// Team members : Simon Erlandsson
+// Code developed by Nikhil Challa and Simon Erlandsson as part of ML in IOT Course - year : 2022
+
+#define MASTER 1
+#define SLAVE 2
 
 #include<stdio.h>
 #include<stdlib.h>
 #include<time.h>
 #include<math.h>
 
-#include <ArduinoBLE.h>
+#include "cnn_data.h"     // training and validation data
+int iter_cnt = 0;
+int weights_bias_cnt = 0;
 
-#include "cnn_data.h"     // network weights
+/* ------- CONFIG ------- */
+#define DEVICE_TYPE MASTER
+#define DEBUG 1
+
+/* 
+ *  DYN_NBR_WEIGHTS defines how many weights that should be transfered via BLE in total/iteration.
+ *  This is calculated at runtime now. Note that it has to be a multiple of BLE_NR_WEIGHTS
+ *  and that DYN_NBR_WEIGHTS / BLE_NBR_WEIGHTS < 256 to prevent overflow.
+ */
+#define DYN_NBR_WEIGHTS weights_bias_cnt // MUST BE MULTIPLE OF BLE_NBR_WEIGHTS!
+/*
+ * For BLE_NR_WEIGHTS, i.e. weights per BLE-transmission, we had big reliability issues
+ * if the payload was > 50 bytes per package. In the struct we use, two bytes are used
+ * for synchronization, leaving 48 bytes to weights. If using floats (as we do), this gives
+ * 12 weights per BLE-transmission.
+ */
+#define BLE_NBR_WEIGHTS 12
 
 // NN parameters
 #define LEARNING_RATE 0.01
-#define EPOCH 25
 
 // DO NOT TOUCH THE FIRST AND LAST ENTRIES OF BELOW ARRAY, YOU CAN MODIFY ANY OF OTHER ENTRIES
 // like increase the number of layers, change the nodes per layer
-static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
+static const int NN_def[] = {first_layer_input_cnt,  20, classes_cnt};
 
-// size of different vectors
-size_t numValData = validation_data_cnt;
-size_t numTrainData = train_data_cnt;
+/* ------- END CONFIG ------- */
 
 #include "NN_functions.h" // Neural Network specific functions and definitions
 
-// to store all the weights and bias for bluetooth transmission
-float* WeightBiasPtr;
+#if DEVICE_TYPE == MASTER
+#define EPOCH 15
+#define NBR_CENTRALS 1
+#include "BLE_peripheral.h"
+
+#else if DEVICE_TYPE == SLAVE
+#define CENTRAL_ID 1
+#include "BLE_central.h"
+#endif
+
+void destroy() {
+  BLE.disconnect();
+  while (1) ;
+}
+
+#if DEVICE_TYPE == MASTER
+void aggregate_weights() {
+#if DEBUG
+  Serial.println("Aggregating");
+#endif
+
+  Serial.println("Accuracy before aggregation:");
+  printAccuracy();
+
+  // Merge incoming weights with masters stored weights
+  packUnpackVector(AVERAGE);
+
+  // Export the new weights to slave(s)
+  packUnpackVector(PACK);
+
+  Serial.println("Accuracy after aggregation:");
+  printAccuracy();
+}
+#endif
+
+void do_training() {
+#if DEVICE_TYPE == MASTER
+  Serial.println("Finished training:");
+  printAccuracy();
+  if (iter_cnt > EPOCH) destroy();
+#endif
+
+// Slave has to unpack from BLE while this is done in the aggregation for the master
+#if DEVICE_TYPE == SLAVE
+  packUnpackVector(UNPACK);
+#endif
+
+#if DEBUG
+  Serial.println("Now Training");
+  PRINT_WEIGHTS();
+#endif
+
+  Serial.print("Epoch count:");
+  Serial.print(++iter_cnt);
+  Serial.println();
+
+  // reordering the index for more randomness and faster learning
+  shuffleIndx();
+  
+  // starting forward + Backward propagation
+  for (int j = 0;j < numTrainData;j++) {
+    generateTrainVectors(j);  
+    forwardProp();
+    backwardProp();
+  }
+
+  // pack the vector for bluetooth transmission
+  forwardProp();
+#if DEVICE_TYPE == SLAVE
+  printAccuracy();
+  packUnpackVector(PACK);
+#endif
+}
 
 
 void setup() {
-	// put your setup code here, to run once:
-	Serial.begin(9600);
+  // randomly initialize the seed based on time
+  srand(time(0));
 
-  // this delay is only for analysis as serial tx is happening before port is ready, 
-  // do not use this for demo
-	delay(5000);
+	Serial.begin(9600);
+  delay(5000);
 
   // We need to count how many weights and bias we need to transfer
   // the code is only for Fully connected layers
-  int NosWeightsBias = calcTotalWeightsBias();
+  weights_bias_cnt = calcTotalWeightsBias();
 
   Serial.print("The total number of weights and bias:");
-  Serial.println(NosWeightsBias);
+  Serial.println(weights_bias_cnt);
 
-  WeightBiasPtr = (float*)malloc(NosWeightsBias*sizeof(float));
+  // Allocate common weight vector, and pass to setupNN, setupBLE
+  float* WeightBiasPtr = (float*) malloc(weights_bias_cnt * sizeof(float));
 
-
-  
-
-	// randomly initialize the seed based on time
-	srand(time(0));
-
-	createNetwork();
- 
-	for (int i = 0; i < EPOCH; i++) {
-		Serial.print("Epoch count:");
-		Serial.print(i);
-		Serial.println();
-
-    // reordering the index for more randomness and faster learning
-		shuffleIndx();
-		
-    // starting forward + Backward propagation
-		for (int j = 0;j < numTrainData;j++) {
-			generateTrainVectors(j);	
-			forwardProp();
-			backwardProp();
-		}
-
-    // pack the vector for bluetooth transmission
-    forwardProp();
-    packUnpackVector(0,WeightBiasPtr);
-    // send bluetooth
-    // do averaging if its master
-    packUnpackVector(2,WeightBiasPtr);
-    // receive bluetooth
-    packUnpackVector(1,WeightBiasPtr);
-
-	}
+  setupNN(WeightBiasPtr);
+  setupBLE(WeightBiasPtr);
 
   printAccuracy();
-
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
 
+void loop() {
+  // Note that for the "central": another loop is ran
+  // when connceted to a peripheral. This function is
+  // then not reachable.
+  loopBLE();
 }

@@ -4,24 +4,22 @@
 // was paused due to lack of time. Runs on Arduino 33 BLE.
 #include <ArduinoBLE.h>
 
-#define NBR_CENTRALS 1
-#define DYN_NBR_WEIGHTS 3600 // MUST BE MULTIPLE OF BLE_NBR_WEIGHTS!
-#define BLE_NBR_WEIGHTS 24
 #define NBR_BATCHES_ITER (DYN_NBR_WEIGHTS / BLE_NBR_WEIGHTS) // Max 255 before overload
 
-#define DEBUG 0
+void do_training(); // Is implemented in main-file
+void aggregate_weights(); // Also in main
 
 typedef struct __attribute__( ( packed ) )
 {
   int8_t turn;
   uint8_t batch_id;
-  int16_t w[BLE_NBR_WEIGHTS];
+  float w[BLE_NBR_WEIGHTS];
 } ble_data_t;
 
 /* ------GLOBAL DATA------ */
-int16_t dyn_weights[DYN_NBR_WEIGHTS];
+float* dyn_weights; // Allocated in main
 ble_data_t bleData;
-int iter_cnt = 0;
+int blt_iter_cnt = 0;
 
 BLEService weightsService("19B10000-E8F2-537E-4F6C-D104768A1214");  // BLE Weights Service
 
@@ -59,34 +57,20 @@ void PRINT_WEIGHTS() {
 }
 #endif
 
-/* ------ML CODE------ */
-void aggregate_weights() {
+/* ------ML RELATED------ */
+// Takes vector from BLE_DATA and stores in weight vector
+// provided by main
+inline void store_incoming_weights() {
 #if DEBUG
-  Serial.println("Aggregating");
   PRINT_BLE(false);
 #endif
-  // Read input, does not need to be stored in a buffer, just use .value() or [] to access offset;
-  // weightsData = *((weights_data_t *)writeCharacteristic.value());
-  // But for now we copied the data into "bleData" before call to this function, might optimize later
-  for (int i = 0; i < BLE_NBR_WEIGHTS; i++) {
-    int idx = (signed int) bleData.batch_id * BLE_NBR_WEIGHTS + i;
-    dyn_weights[idx] += bleData.w[i];
+  memcpy(dyn_weights + bleData.batch_id * BLE_NBR_WEIGHTS, bleData.w, BLE_NBR_WEIGHTS * sizeof(bleData.w[0]));
+
+  // Calculate our updated weights
+  if (bleData.batch_id == NBR_BATCHES_ITER - 1) {
+    // Got all data for this iteration
+    aggregate_weights();
   }
-
-  //delay(30);
-}
-
-void do_training() {
-  dyn_weights[0]++;
-  dyn_weights[DYN_NBR_WEIGHTS - 1]++;
-  dyn_weights[3]++;
-
-#if DEBUG
-  Serial.println("Peripheral Training");
-  PRINT_WEIGHTS();
-#endif
-
-  //delay(250);
 }
 
 /* ------BLUETOOTH CODE------ */
@@ -110,14 +94,8 @@ void DisconnectHandler(BLEDevice central) {
 
 int turn = 1;
 
-void setup() {
-  Serial.begin(9600);
-  //while (!Serial);
-
-  // set LED pin to output mode
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);
-
+void setupBLE(float* wbptr) {
+  dyn_weights = wbptr;
   // begin initialization
   if (!BLE.begin()) {
 #if DEBUG
@@ -151,15 +129,17 @@ void setup() {
   BLE.advertise();
 
 #if DEBUG
-  Serial.println("BLE Weights Peripheral");
+  Serial.println("BLE Weights Peripheral Setup Done");
 #endif
 }
 
 unsigned long old_time;
 
-void loop() {
+void loopBLE() {
   unsigned long current_time = millis();
   BLE.poll();
+  if (!BLE.central()) return;
+  
   bool timeout = current_time - old_time > 10000;
   if (writeCharacteristic.written() || timeout) {
     old_time = current_time;
@@ -170,7 +150,7 @@ void loop() {
       uint8_t batch_id = writeCharacteristic[1];
       // Add the received weights to our weight vector
       writeCharacteristic.readValue((byte *)&bleData, sizeof(bleData));
-      aggregate_weights();
+      store_incoming_weights();
 
       // Have all weights for this iteration been aggregated? I.e. iteration finished?
       if (turn == NBR_CENTRALS && batch_id == NBR_BATCHES_ITER - 1 || timeout) {
@@ -179,7 +159,7 @@ void loop() {
         // Beginning of new iteration, distribute weights from previous iteration and tell node 1 to send training result
 
         Serial.print("-- STARTING ITERATION: ");
-        Serial.print(iter_cnt++);
+        Serial.print(blt_iter_cnt++);
         Serial.println(" --");
 
         // Send multiple batches (all weights)
@@ -194,7 +174,10 @@ void loop() {
 
         // Calculate our contribution to next iteration, while others also are calculating
         // But dont if timeout, to avoid unequal sample size
-        if (!timeout) do_training();
+        if (!timeout) {
+          do_training();
+          old_time = millis(); // Avoid timeout due to training
+        }
       } else if (bleData.batch_id == NBR_BATCHES_ITER - 1 ) {
         bleData.turn = ++turn;
         // Tell next node to send its weights, note: no need to redistribute weights
