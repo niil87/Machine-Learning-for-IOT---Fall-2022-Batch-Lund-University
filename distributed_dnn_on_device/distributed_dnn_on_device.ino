@@ -14,7 +14,7 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
 #define DEBUG 0
 
 /*
@@ -94,10 +94,8 @@ void aggregate_weights() {
 
 #if USE_DISTRIBUTED_WEIGHTS
   // Merge incoming weights with masters stored weights
+  // Also exports the new weights to slave(s)
   packUnpackVector(AVERAGE);
-
-  // Export the new weights to slave(s)
-  packUnpackVector(PACK);
 #endif
 
   Serial.println("Accuracy after aggregation:");
@@ -114,6 +112,8 @@ void do_training() {
 // Slave has to unpack from BLE while this is done in the aggregation for the master
 #if DEVICE_TYPE == SLAVE && USE_DISTRIBUTED_WEIGHTS
   packUnpackVector(UNPACK);
+  Serial.println("Accuracy using incoming weights:");
+  printAccuracy();
 #endif
 
 #if DEBUG
@@ -138,10 +138,11 @@ void do_training() {
   // pack the vector for bluetooth transmission
   forwardProp();
 #if DEVICE_TYPE == SLAVE
-  printAccuracy();
 #if USE_DISTRIBUTED_WEIGHTS
   packUnpackVector(PACK);
+  Serial.println("Accuracy after local training:");
 #endif
+  printAccuracy();
 #endif
 }
 
