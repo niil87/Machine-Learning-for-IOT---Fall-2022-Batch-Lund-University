@@ -92,8 +92,6 @@ void DisconnectHandler(BLEDevice central) {
   BLE.advertise();
 }
 
-int turn = 1;
-
 void setupBLE(float* wbptr) {
   dyn_weights = wbptr;
   // begin initialization
@@ -116,68 +114,71 @@ void setupBLE(float* wbptr) {
 
   // add service
   BLE.addService(weightsService);
+
   // set the initial value for the characeristic:
-
-  // Client should respond
   writeCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
-
-  bleData.turn = turn;
-  bleData.batch_id == NBR_BATCHES_ITER - 1;
   readCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
 
   // start advertising
   BLE.advertise();
+
+  // Let master train once before sending weights, to not just send all zeros
+  do_training();
 
 #if DEBUG
   Serial.println("BLE Weights Peripheral Setup Done");
 #endif
 }
 
-unsigned long old_time;
+int turn;
+
+void send_iteration_data() {
+  turn = 1; // Start over
+  bleData.turn = turn;
+  // Beginning of new iteration, distribute weights from previous iteration and tell node 1 to send training result
+
+  Serial.print("-- STARTING ITERATION: ");
+  Serial.print(blt_iter_cnt++);
+  Serial.println(" --");
+
+  // Send multiple batches (all weights)
+  for (int i = 0; i < NBR_BATCHES_ITER; i++) {
+    bleData.batch_id = i;
+    memcpy(bleData.w, dyn_weights + i * BLE_NBR_WEIGHTS, BLE_NBR_WEIGHTS * sizeof(bleData.w[0]));
+    readCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
+#if DEBUG
+    PRINT_BLE(true);
+#endif
+  }
+}
 
 void loopBLE() {
-  unsigned long current_time = millis();
   BLE.poll();
   if (!BLE.central()) return;
-  
-  bool timeout = current_time - old_time > 10000;
-  if (writeCharacteristic.written() || timeout) {
-    old_time = current_time;
+
+  if (writeCharacteristic.written()) {
     int8_t receivedTurn = writeCharacteristic[0];
 
+    // -1 means connection established, send weights, no aggregation since nothing received
+    if (receivedTurn == -1) {
+      send_iteration_data();
+      return;
+    }
+
     // Master needs to do something
-    if (receivedTurn == 0 || timeout) {
+    if (receivedTurn == 0) {
       uint8_t batch_id = writeCharacteristic[1];
+
       // Add the received weights to our weight vector
       writeCharacteristic.readValue((byte *)&bleData, sizeof(bleData));
       store_incoming_weights();
-
+      
       // Have all weights for this iteration been aggregated? I.e. iteration finished?
-      if (turn == NBR_CENTRALS && batch_id == NBR_BATCHES_ITER - 1 || timeout) {
-        turn = 1; // Start over
-        bleData.turn = turn;
-        // Beginning of new iteration, distribute weights from previous iteration and tell node 1 to send training result
-
-        Serial.print("-- STARTING ITERATION: ");
-        Serial.print(blt_iter_cnt++);
-        Serial.println(" --");
-
-        // Send multiple batches (all weights)
-        for (int i = 0; i < NBR_BATCHES_ITER; i++) {
-          bleData.batch_id = i;
-          memcpy(bleData.w, dyn_weights + i * BLE_NBR_WEIGHTS, BLE_NBR_WEIGHTS * sizeof(bleData.w[0]));
-          readCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
-#if DEBUG
-          PRINT_BLE(true);
-#endif
-        }
-
+      if (turn == NBR_CENTRALS && batch_id == NBR_BATCHES_ITER - 1) {
+        send_iteration_data();
         // Calculate our contribution to next iteration, while others also are calculating
-        // But dont if timeout, to avoid unequal sample size
-        if (!timeout) {
-          do_training();
-          old_time = millis(); // Avoid timeout due to training
-        }
+        do_training();
+        
       } else if (bleData.batch_id == NBR_BATCHES_ITER - 1 ) {
         bleData.turn = ++turn;
         // Tell next node to send its weights, note: no need to redistribute weights

@@ -144,6 +144,10 @@ void connectPeripheral() {
     return;
   }
 
+  // Inform peripheral, connection is established
+  bleData.turn = -1;
+  writeCharacteristic.writeValue((byte *)&bleData, sizeof(bleData));
+
   // Continues until disconnect
   loopPeripheral();
 

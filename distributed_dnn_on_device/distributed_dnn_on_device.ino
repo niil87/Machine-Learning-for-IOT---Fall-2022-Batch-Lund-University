@@ -14,7 +14,7 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
 #define DEBUG 0
 
 /*
@@ -184,11 +184,10 @@ void setup() {
   float* WeightBiasPtr = (float*) calloc(weights_bias_cnt, sizeof(float));
 
   setupNN(WeightBiasPtr);
+  printAccuracy();
 #if ENABLE_BLE
   setupBLE(WeightBiasPtr);
 #endif
-
-  printAccuracy();
 }
 
 void loop() {
