@@ -3,10 +3,10 @@
 #define MASTER 1
 #define SLAVE 2
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
-#include<math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
 
 int iter_cnt = 0;
 int weights_bias_cnt = 0;
@@ -14,7 +14,7 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
 #define DEBUG 0
 
 /*
@@ -26,9 +26,17 @@ extern const int classes_cnt;
 /*
  *  Should the incoming weights be saved (and taken into account) or ignored? Can be used to
  *  test the accuracy if only training locally, using the device's own data.
- *  BLE is still used, to synchronize between iterations.
+ *  BLE is still used, to synchronize between iterations, thus can also be used to test BLE connection.
+ *  NOTE: ENABLE_BLE should be set to 1 if this is enabled.
  */
 #define USE_DISTRIBUTED_WEIGHTS 1
+
+/*
+ *  Disabling BLE runs the device completely locally. I.e. training happens as if
+ *  USE_DISTRIBUTED_WEIGHTS = 0 and no synchronization is done at all.
+ *  Use for testing on one device.
+ */
+#define ENABLE_BLE 1
 
 /* 
  *  DYN_NBR_WEIGHTS defines how many weights that should be transfered via BLE in total/iteration.
@@ -36,11 +44,12 @@ extern const int classes_cnt;
  *  and that DYN_NBR_WEIGHTS / BLE_NBR_WEIGHTS < 256 to prevent overflow.
  */
 #define DYN_NBR_WEIGHTS weights_bias_cnt // MUST BE MULTIPLE OF BLE_NBR_WEIGHTS!
+
 /*
- * For BLE_NR_WEIGHTS, i.e. weights per BLE-transmission, we had big reliability issues
- * if the payload was > 50 bytes per package. In the struct we use, two bytes are used
- * for synchronization, leaving 48 bytes to weights. If using floats (as we do), this gives
- * 12 weights per BLE-transmission.
+ *  For BLE_NR_WEIGHTS, i.e. weights per BLE-transmission, we had big reliability issues
+ *  if the payload was > 50 bytes per package. In the struct we use, two bytes are used
+ *  for synchronization, leaving 48 bytes to weights. If using floats (as we do), this gives
+ *  12 weights per BLE-transmission.
  */
 #define BLE_NBR_WEIGHTS 12
 
@@ -77,8 +86,10 @@ static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 void destroy() {
   Serial.println("Finished training, shutting down.");
   printAccuracy();
+#if ENABLE_BLE
   BLE.stopAdvertise();
   BLE.disconnect();
+#endif
   while (1) ;
 }
 
@@ -92,7 +103,7 @@ void aggregate_weights() {
   Serial.println("Accuracy before aggregation:");
   printAccuracy();
 
-#if USE_DISTRIBUTED_WEIGHTS
+#if USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   // Merge incoming weights with masters stored weights
   // Also exports the new weights to slave(s)
   packUnpackVector(AVERAGE);
@@ -103,14 +114,14 @@ void aggregate_weights() {
 }
 #endif
 
-/* Called by BLE when all weights have been received/aggregated*/
+/* Called by BLE when all weights have been received/aggregated */
 void do_training() {
-#if DEVICE_TYPE == MASTER
+#if DEVICE_TYPE == MASTER || !ENABLE_BLE
   if (iter_cnt >= EPOCH) destroy();
 #endif
 
 // Slave has to unpack from BLE while this is done in the aggregation for the master
-#if DEVICE_TYPE == SLAVE && USE_DISTRIBUTED_WEIGHTS
+#if DEVICE_TYPE == SLAVE && USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   packUnpackVector(UNPACK);
   Serial.println("Accuracy using incoming weights:");
   printAccuracy();
@@ -137,8 +148,8 @@ void do_training() {
 
   // pack the vector for bluetooth transmission
   forwardProp();
-#if DEVICE_TYPE == SLAVE
-#if USE_DISTRIBUTED_WEIGHTS
+#if DEVICE_TYPE == SLAVE || !ENABLE_BLE
+#if USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   packUnpackVector(PACK);
   Serial.println("Accuracy after local training:");
 #endif
@@ -146,12 +157,11 @@ void do_training() {
 #endif
 }
 
-
 void setup() {
   // randomly initialize the seed based on time
   srand(time(0));
 
-	Serial.begin(9600);
+  Serial.begin(9600);
   delay(5000);
 
   // We need to count how many weights and bias we need to transfer
@@ -174,15 +184,20 @@ void setup() {
   float* WeightBiasPtr = (float*) calloc(weights_bias_cnt, sizeof(float));
 
   setupNN(WeightBiasPtr);
+#if ENABLE_BLE
   setupBLE(WeightBiasPtr);
+#endif
 
   printAccuracy();
 }
-
 
 void loop() {
   // Note that for the "central": another loop is ran
   // when connceted to a peripheral. This function is
   // then not reachable.
+#if ENABLE_BLE
   loopBLE();
+#else
+  do_training(); // Local training
+#endif
 }
