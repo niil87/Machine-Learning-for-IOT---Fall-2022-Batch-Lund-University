@@ -61,6 +61,9 @@ extern const int classes_cnt;
 // like increase the number of layers, change the nodes per layer
 static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
+// this is to set the precision for weight/bias in NN
+#define DATA_TYPE_FLOAT  // other value is DATA_TYPE_FLOAT
+
 /* ------- END CONFIG ------- */
 
 // Training and Validation data
@@ -181,7 +184,7 @@ void setup() {
   Serial.println(weights_bias_cnt);
 
   // Allocate common weight vector, and pass to setupNN, setupBLE
-  float* WeightBiasPtr = (float*) calloc(weights_bias_cnt, sizeof(float));
+  DATA_TYPE* WeightBiasPtr = (DATA_TYPE*) calloc(weights_bias_cnt, sizeof(DATA_TYPE));
 
   setupNN(WeightBiasPtr);
   printAccuracy();
