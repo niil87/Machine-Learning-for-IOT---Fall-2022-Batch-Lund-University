@@ -203,11 +203,15 @@ void forwardProp() {
   // performing exp but ensuring we dont exceed 709 or 88 in any terms 
   DATA_TYPE norm = abs(y[maxIndx]);
   if (norm > EXP_LIMIT) {
+#if DEBUG
     Serial.print("Max limit exceeded for exp:");
     Serial.println(norm);
+#endif
     norm = norm / EXP_LIMIT;
+#if DEBUG
     Serial.print("New divising factor:");
     Serial.println(norm);
+#endif
   } else {
     norm = 1.0;
   }
