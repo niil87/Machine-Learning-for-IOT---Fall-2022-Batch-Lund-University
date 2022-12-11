@@ -74,7 +74,7 @@ Explanation of the purpose of most of the folders/files in the repository.
 
     - Image_Dump_From_Arduino.ino: the Arduino code used when capturing images
 
- - Transform_Camera_Images.ipynb: takes the images obtained above, processes them into a standardized format and exports the images and classes to numpy files
+  - Transform_Camera_Images.ipynb: takes the images obtained above, processes them into a standardized format and exports the images and classes to numpy files
 
 - Networking: isolated development of bluetooth communication between Arduinos
   - 2_devices_batch_final: Latest version before merge with DNN. Works with two devices and sending large data by splitting into smaller batches
