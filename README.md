@@ -6,9 +6,9 @@
 Preview of the dataset used in the project, consisting of three classes.
 
 ### Introduction
-This repository contains the code and assets used for the project in the ML IoT course. Our project aims to perform facial recognition and classifying the present person using the on-device camera, by utilizing distributed on-device DNN learning.
+This repository contains the code and assets used for the project in the ML IoT course @ LTH. Our project aims to perform on-device facial recognition and classification using the Arduino camera, by utilizing distributed on-device DNN learning.
 
-Due to time constraints and reduction in team size (5 -> 2 persons), the goal of the project was simplified to consist of partial on-device deep neural network learning. In the end, we achieved the following:
+Due to time constraints and reduction in team size (5 -> 2 persons), the goal of the project was simplified to consist of on-device deep neural network learning, using the output from a CNN running in Python as input. In the end, we achieved the following:
 
 - Created a data-set consisting of facial images captured using the device camera (Arduino 33 BLE) with 3 classes
 - Used the images to train a CNN with a DNN part, using Tensorflow (on PC)
