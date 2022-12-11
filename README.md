@@ -42,47 +42,47 @@ Furthermore, both Nikhil and Simon discussed many aspects of the project and bot
 ### Git Folder and File Structure:
 Explanation of the purpose of most of the folders/files in the repository.
 - Before_Group_Split: raw work by prior group members:
- - Evelyn: translating between 565 and 888 image format, transforming datasets from the web & capturing images from the Arduino
+  - Evelyn: translating between 565 and 888 image format, transforming datasets from the web & capturing images from the Arduino
 
- - Tensor_Single: Edvin & Gloria, Tensorflow model for classification of online images consisting of celebrities
+  - Tensor_Single: Edvin & Gloria, Tensorflow model for classification of online images consisting of celebrities
 
 - Datasets: the images used for the training and validation (Simon, Nikhil, Maria):
- - Images_for_Training: raw output from the scripts in "Misc/Image_Dump_From_Arduino"
+  - Images_for_Training: raw output from the scripts in "Misc/Image_Dump_From_Arduino"
 
- - Images_Transformed_565_160_120: numpy arrays of the output above, transformed to resolution 160x120 with 565 image coding. Done using "Misc/transform_camera_images.ipynb"
+  - Images_Transformed_565_160_120: numpy arrays of the output above, transformed to resolution 160x120 with 565 image coding. Done using "Misc/transform_camera_images.ipynb"
 
 - Distributed_DNN_On_Device: the final Arduino code: both NN and BLE
- - BLE_central.h: BLE code for slave
- - BLE_peripheral.h: BLE code for master (the one merging the weights)
- - cnn_data_biased_*.h: The biased data used to verify that the model is improving by utilizing the distribution
- - cnn_data.h: Full data, i.e. whole dataset is present in the file
- - distributed_dnn_on_device.ino: Main file, controller between BLE and NN
+  - BLE_central.h: BLE code for slave
+  - BLE_peripheral.h: BLE code for master (the one merging the weights)
+  - cnn_data_biased_*.h: The biased data used to verify that the model is  improving by utilizing the distribution
+  - cnn_data.h: Full data, i.e. whole dataset is present in the file
+  - distributed_dnn_on_device.ino: Main file, controller between BLE and NN
 
- - NN_functions.h: NN implementation
+  - NN_functions.h: NN implementation
 
 - DNN_On_Device_Training: isolated development of the DNN in C for Arduino
- - DNN_one_Device_From_CNN: first implementation of using the output from the CNN to train locally
+  - DNN_one_Device_From_CNN: first implementation of using the output from the CNN to train locally
 
- - DNN_Sample_Code: first implementation of NN in C/Arduino
+  - DNN_Sample_Code: first implementation of NN in C/Arduino
 
 - Misc: small programs/scripts that don't belong elsewhere
- - Image_Dump_From_Arduino:
+  - Image_Dump_From_Arduino:
 
-   - capture_image_loop.ipynb: interactive notebook for capturing, viewing and saving images from the Arduino
+    - capture_image_loop.ipynb: interactive notebook for capturing, viewing and saving images from the Arduino
 
-   - capture_img.py: helper functions to the notebook
+    - capture_img.py: helper functions to the notebook
 
-   - Image_Dump_From_Arduino.ino: the Arduino code used when capturing images
+    - Image_Dump_From_Arduino.ino: the Arduino code used when capturing images
 
  - Transform_Camera_Images.ipynb: takes the images obtained above, processes them into a standardized format and exports the images and classes to numpy files
 
 - Networking: isolated development of bluetooth communication between Arduinos
- - 2_devices_batch_final: Latest version before merge with DNN. Works with two devices and sending large data by splitting into smaller batches
- - Older versions:
+  - 2_devices_batch_final: Latest version before merge with DNN. Works with two devices and sending large data by splitting into smaller batches
+  - Older versions:
 
-   - 3 devices: first version using 3 devices, most of this work is kept in "2_devices_batch_final", may contain bugs
+    - 3 devices: first version using 3 devices, most of this work is kept in "2_devices_batch_final", may contain bugs
 
-   - first_version_2_devices: no batching, only sends one struct per iteration
+    - first_version_2_devices: no batching, only sends one struct per iteration
 
 - Tensorflow_Python: the final code for training and utilizing the CNN to provide input data to device
   - Model_Final: exported Tensorflow model, CNN + DNN
