@@ -1,5 +1,8 @@
 // Code developed by Nikhil Challa as part of ML in IOT Course - year : 2022
 // Team members : Simon Erlandsson
+// To get full understanding of the code, please refer to below document in git
+// https://github.com/niil87/Machine-Learning-for-IOT---Fall-2022-Batch-Lund-University/blob/main/Math_for_Understanding_Deep_Neural_Networks.pdf
+// The equations that corresponds to specific code will be listed in the comments next to code
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -40,27 +43,23 @@ DATA_TYPE y[OUT_VEC_SIZE];        // output after forward propagation
 // creating array index to randomnize order of training data
 int indxArray[train_data_cnt];
 
-// Convention:
-// Aggregated results from all weights to node is A
-// Application of activation function to A is X
-// Weights will be represented by W and is weights entering the node
-// Bias will be represented by B
+// Convention: Refer to 
 typedef struct neuron_t {
-  int numInput;
-  DATA_TYPE* W;
-  DATA_TYPE B;
-  DATA_TYPE X;
+	int numInput;
+	DATA_TYPE* W;
+	DATA_TYPE B;
+	DATA_TYPE X;
 
-  // For back propagation, convention, dA means dL/dA or partial derivative of Loss over Accumulative output
-  DATA_TYPE* dW;
-  DATA_TYPE dA;
-  DATA_TYPE dB;
+	// For back propagation, convention, dA means dL/dA or partial derivative of Loss over Accumulative output
+	DATA_TYPE* dW;
+	DATA_TYPE dA;
+	DATA_TYPE dB;
 
 } neuron;
 
 typedef struct layer_t {
-  int numNeuron;
-  neuron* Neu;
+	int numNeuron;
+	neuron* Neu;
 } layer;
 
 // initializing the layer as global parameter
@@ -69,28 +68,29 @@ layer* L = NULL;
 // Weights written to here will be sent/received via bluetooth. 
 DATA_TYPE* WeightBiasPtr = NULL;
 
+// Equation (8)
 DATA_TYPE AccFunction (int layerIndx, int nodeIndx) {
-  DATA_TYPE A = 0;
+	DATA_TYPE A = 0;
 
-  for (int k = 0; k < NN_def[layerIndx - 1]; k++) {
+	for (int k = 0; k < NN_def[layerIndx - 1]; k++) {
 
-    // updating weights/bais and resetting gradient value if non-zero
-    if (L[layerIndx].Neu[nodeIndx].dW[k] != 0.0 ) {
-      L[layerIndx].Neu[nodeIndx].W[k] += L[layerIndx].Neu[nodeIndx].dW[k];
-      L[layerIndx].Neu[nodeIndx].dW[k] = 0.0;
-    }
+	// updating weights/bais and resetting gradient value if non-zero
+	if (L[layerIndx].Neu[nodeIndx].dW[k] != 0.0 ) {
+		L[layerIndx].Neu[nodeIndx].W[k] += L[layerIndx].Neu[nodeIndx].dW[k];
+		L[layerIndx].Neu[nodeIndx].dW[k] = 0.0;
+	}
 
-    A += L[layerIndx].Neu[nodeIndx].W[k] * L[layerIndx - 1].Neu[k].X;
+	A += L[layerIndx].Neu[nodeIndx].W[k] * L[layerIndx - 1].Neu[k].X;
 
-  }
+	}
 
-  if (L[layerIndx].Neu[nodeIndx].dB != 0.0 ) {
-    L[layerIndx].Neu[nodeIndx].B += L[layerIndx].Neu[nodeIndx].dB;
-    L[layerIndx].Neu[nodeIndx].dB = 0.0;
-  }
-  A += L[layerIndx].Neu[nodeIndx].B;
+	if (L[layerIndx].Neu[nodeIndx].dB != 0.0 ) {
+		L[layerIndx].Neu[nodeIndx].B += L[layerIndx].Neu[nodeIndx].dB;
+		L[layerIndx].Neu[nodeIndx].dB = 0.0;
+	}
+	A += L[layerIndx].Neu[nodeIndx].B;
 
-  return A;
+	return A;
 }
 
 
@@ -98,52 +98,50 @@ DATA_TYPE AccFunction (int layerIndx, int nodeIndx) {
 // EVEN THOUGH WE HAVENT EXPLICITLY CALLED CREATED THE NEURON FOR FIRST LAYER, HOW WAS L[i].Neu[j].X SUCCESSFUL IN FORWARD PROPAGATION!!
 neuron createNeuron(int numInput) {
 
-  neuron N1;
+	neuron N1;
 
-  N1.B = fRAND;
-  N1.numInput = numInput;
-  N1.W = (DATA_TYPE*)calloc(numInput, sizeof(DATA_TYPE));
-  N1.dW = (DATA_TYPE*)calloc(numInput, sizeof(DATA_TYPE));
-  // initializing values of W to rand and dW to 0
-  int Sum = 0;
-  for (int i = 0; i < numInput; i++) {
-    N1.W[i] = fRAND;
-    N1.dW[i] = 0.0;
-  }
-  N1.dA = 0.0;
-  N1.dB = 0.0;
+	N1.B = fRAND;
+	N1.numInput = numInput;
+	N1.W = (DATA_TYPE*)calloc(numInput, sizeof(DATA_TYPE));
+	N1.dW = (DATA_TYPE*)calloc(numInput, sizeof(DATA_TYPE));
+	// initializing values of W to rand and dW to 0
+	int Sum = 0;
+	for (int i = 0; i < numInput; i++) {
+		N1.W[i] = fRAND;
+		N1.dW[i] = 0.0;
+	}
+	N1.dA = 0.0;
+	N1.dB = 0.0;
 
-  return N1;
+	return N1;
 
 }
 
 layer createLayer (int numNeuron) {
-
-  layer L1;
-  L1.numNeuron = numNeuron;
-  L1.Neu = (neuron*)calloc(numNeuron, sizeof(neuron));
-  return L1;
-
+	layer L1;
+	L1.numNeuron = numNeuron;
+	L1.Neu = (neuron*)calloc(numNeuron, sizeof(neuron));
+	return L1;
 }
 
 void createNetwork() {
 
-  L = (layer*)calloc(numLayers, sizeof(layer));
+	L = (layer*)calloc(numLayers, sizeof(layer));
 
-  // First layer has no input weights
-  L[0] = createLayer(NN_def[0]);
+	// First layer has no input weights
+	L[0] = createLayer(NN_def[0]);
 
-  for (int i = 1; i < numLayers; i++) {
-    L[i] = createLayer(NN_def[i]);
-    for (int j = 0; j < NN_def[i]; j++) {
-      L[i].Neu[j] = createNeuron(NN_def[i - 1]);
-    }
-  }
+	for (int i = 1; i < numLayers; i++) {
+		L[i] = createLayer(NN_def[i]);
+		for (int j = 0; j < NN_def[i]; j++) {
+			L[i].Neu[j] = createNeuron(NN_def[i - 1]);
+		}
+	}
 
-  // creating indx array for shuffle function to be used later
-  for (int i = 0; i <  numTrainData; i ++ ) {
-    indxArray[i] = i;
-  }
+	// creating indx array for shuffle function to be used later
+	for (int i = 0; i <  numTrainData; i ++ ) {
+		indxArray[i] = i;
+	}
 
 }
 
@@ -151,31 +149,27 @@ void createNetwork() {
 // this function is to calculate dA
 DATA_TYPE dLossCalc( int layerIndx, int nodeIndx) {
 
-  DATA_TYPE Sum = 0;
-  int outputSize = NN_def[numLayers - 1];
-  // for the last layer, we use complex computation
-  if (layerIndx == numLayers - 1) {
+	DATA_TYPE Sum = 0;
+	int outputSize = NN_def[numLayers - 1];
+	// for the last layer, we use complex computation
+	if (layerIndx == numLayers - 1) {	
+		Sum = y[nodeIndx] - hat_y[nodeIndx];										// Equation (17)
+	// for all except last layer, we use simple aggregate of dA
+	} else if (AccFunction(layerIndx, nodeIndx) > 0)  {   							
+		for (int i = 0; i < NN_def[layerIndx + 1]; i++) {
+			Sum += L[layerIndx + 1].Neu[i].dA * L[layerIndx + 1].Neu[i].W[nodeIndx]; 	// Equation (24)
+		}
+	} else {   																		// refer to "Neat Trick" and Equation (21)
+		Sum = 0;
+	}
 
-    Sum = y[nodeIndx] - hat_y[nodeIndx];
-
-    // for all except last layer, we use simple aggregate of dA
-  } else if (AccFunction(layerIndx, nodeIndx) > 0)  {
-
-    for (int i = 0; i < NN_def[layerIndx + 1]; i++) {
-      Sum += L[layerIndx + 1].Neu[i].dA * L[layerIndx + 1].Neu[i].W[nodeIndx];
-    }
-
-  } else {
-    Sum = 0;
-  }
-
-  return Sum;
+	return Sum;
 }
 
 void forwardProp() {
 	
 	DATA_TYPE Fsum = 0;
-  int maxIndx = 0;
+	int maxIndx = 0;
 	// Propagating through network
 	for (int i = 0; i < numLayers; i++) {
 		// assigning node values straight from input for first layer
@@ -187,59 +181,57 @@ void forwardProp() {
       // softmax functionality but require normalizing performed later
 			for (int j = 0; j < NN_def[i];j++) {
 				y[j] = AccFunction(i,j);
-        // tracking the max index
-        if ( ( j > 0 ) && (abs(y[maxIndx]) < abs(y[j])) ) {
-          maxIndx = j;
-        }
+				// tracking the max index
+				if ( ( j > 0 ) && (abs(y[maxIndx]) < abs(y[j])) ) {
+					maxIndx = j;
+				}
 			}
-		} else {
+		} else {	
 			// for subsequent layers, we need to perform RELU
 			for (int j = 0; j < NN_def[i];j++) {
-				L[i].Neu[j].X = ACT(AccFunction(i,j));
+				L[i].Neu[j].X = ACT(AccFunction(i,j));				// Equation (21)	
 			}	
 		}
 	}
 
   // performing exp but ensuring we dont exceed 709 or 88 in any terms 
-  DATA_TYPE norm = abs(y[maxIndx]);
-  if (norm > EXP_LIMIT) {
+	DATA_TYPE norm = abs(y[maxIndx]);
+	if (norm > EXP_LIMIT) {
 #if DEBUG
-    Serial.print("Max limit exceeded for exp:");
-    Serial.println(norm);
+		Serial.print("Max limit exceeded for exp:");
+		Serial.println(norm);
 #endif
-    norm = norm / EXP_LIMIT;
+		norm = norm / EXP_LIMIT;
 #if DEBUG
-    Serial.print("New divising factor:");
-    Serial.println(norm);
+		Serial.print("New divising factor:");
+		Serial.println(norm);
 #endif
-  } else {
-    norm = 1.0;
-  }
+	} else {
+		norm = 1.0;
+	}
 	for (int j = 0; j < NN_def[numLayers-1];j++) {
-    int flag = 0;
-    y[j] = EXP(y[j]/norm);
-    Fsum += y[j];
+		int flag = 0;
+		y[j] = EXP(y[j]/norm);
+		Fsum += y[j];
 	}
 
   // final normalizing for softmax
 	for (int j = 0; j < NN_def[numLayers-1];j++) {
-    y[j] = y[j]/Fsum;
+		y[j] = y[j]/Fsum;
 	}
 }
 
 void backwardProp() {
-
-  for (int i = numLayers - 1; i > 1; i--) {
+	for (int i = numLayers - 1; i > 1; i--) {
     // tracing each node in the layer.
-    for (int j = 0; j < NN_def[i]; j++) {
-      // first checking if drivative of activation function is 0 or not! NEED TO UPGRADE TO ALLOW ACTIVATION FUNCTION OTHER THAN RELU
-      L[i].Neu[j].dA = dLossCalc(i, j);
+		for (int j = 0; j < NN_def[i]; j++) {
+		// first checking if drivative of activation function is 0 or not! NEED TO UPGRADE TO ALLOW ACTIVATION FUNCTION OTHER THAN RELU
+		L[i].Neu[j].dA = dLossCalc(i, j);
 
-      for (int k = 0; k < NN_def[i - 1]; k++) {
-        L[i].Neu[j].dW[k] = -LEARNING_RATE * L[i].Neu[j].dA * L[i - 1].Neu[k].X;
-      }
-      L[i].Neu[j].dB = -LEARNING_RATE * L[i].Neu[j].dA;
-
+		for (int k = 0; k < NN_def[i - 1]; k++) {
+			L[i].Neu[j].dW[k] = -LEARNING_RATE * L[i].Neu[j].dA * L[i - 1].Neu[k].X;
+		}
+		L[i].Neu[j].dB = -LEARNING_RATE * L[i].Neu[j].dA;
     }
   }
 }
@@ -248,15 +240,15 @@ void backwardProp() {
 // function to set the input and output vectors for training or inference
 void generateTrainVectors(int indx) {
 
-  // Train Data
-  for (int j = 0; j < OUT_VEC_SIZE; j++) {
-    hat_y[j] = 0.0;
-  }
-  hat_y[ train_labels[ indxArray[indx] ] ] = 1.0;
+	// Train Data
+	for (int j = 0; j < OUT_VEC_SIZE; j++) {
+		hat_y[j] = 0.0;
+	}
+	hat_y[ train_labels[ indxArray[indx] ] ] = 1.0;
 
-  for (int j = 0; j < IN_VEC_SIZE; j++) {
-    input[j] = cnn_train_data[ indxArray[indx] ][j];
-  }
+	for (int j = 0; j < IN_VEC_SIZE; j++) {
+		input[j] = cnn_train_data[ indxArray[indx] ][j];
+	}
 
 }
 
@@ -273,12 +265,12 @@ void shuffleIndx()
 
 int calcTotalWeightsBias()
 {
-  int Count = 0;
-  for (int i = 0; i < numLayers - 1; i++) {
-    Count += NN_def[i] * NN_def[i + 1] + NN_def[i + 1];
-  }
+	int Count = 0;
+	for (int i = 0; i < numLayers - 1; i++) {
+		Count += NN_def[i] * NN_def[i + 1] + NN_def[i + 1];
+	}
 
-  return Count;
+	return Count;
 }
 
 void printAccuracy()

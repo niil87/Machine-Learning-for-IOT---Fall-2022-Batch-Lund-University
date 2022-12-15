@@ -62,7 +62,7 @@ extern const int classes_cnt;
 static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
 // this is to set the precision for weight/bias in NN
-#define DATA_TYPE_FLOAT  // other value is DATA_TYPE_FLOAT
+#define DATA_TYPE_DOUBLE  // Valid values:  DATA_TYPE_DOUBLE , DATA_TYPE_FLOAT
 
 /* ------- END CONFIG ------- */
 
@@ -186,7 +186,7 @@ void setup() {
   // Allocate common weight vector, and pass to setupNN, setupBLE
   DATA_TYPE* WeightBiasPtr = (DATA_TYPE*) calloc(weights_bias_cnt, sizeof(DATA_TYPE));
 
-  setupNN(WeightBiasPtr);
+  setupNN(WeightBiasPtr);  // CREATES THE NETWORK BASED ON NN_def[]
   printAccuracy();
 #if ENABLE_BLE
   setupBLE(WeightBiasPtr);
