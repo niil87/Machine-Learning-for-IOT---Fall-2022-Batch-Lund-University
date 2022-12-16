@@ -25,6 +25,7 @@
 #define OUT_VEC_SIZE classes_cnt
 
 // size of different vectors
+size_t numTestData = test_data_cnt;
 size_t numValData = validation_data_cnt;
 size_t numTrainData = train_data_cnt;
 
@@ -319,6 +320,28 @@ void printAccuracy()
 
   Accuracy = correctCount * 1.0 / numValData;
   Serial.print("Validation Accuracy: ");
+  Serial.println(Accuracy);
+
+  correctCount = 0;
+  for (int i = 0; i < numTestData; i++) {
+    int maxIndx = 0;
+    for (int j = 0; j < IN_VEC_SIZE; j++) {
+      input[j] = cnn_test_data[i][j];
+    }
+
+    forwardProp();
+    for (int j = 1; j < OUT_VEC_SIZE; j++) {
+      if (y[maxIndx] < y[j]) {
+        maxIndx = j;
+      }
+    }
+    if (maxIndx == test_labels[i]) {
+      correctCount += 1;
+    }
+  }
+
+  Accuracy = correctCount * 1.0 / numTestData;
+  Serial.print("Test Accuracy: ");
   Serial.println(Accuracy);
 }
 

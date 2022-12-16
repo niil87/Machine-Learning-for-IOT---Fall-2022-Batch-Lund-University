@@ -14,7 +14,7 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
 #define DEBUG 0
 
 /*
