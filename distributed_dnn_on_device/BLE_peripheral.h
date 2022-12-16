@@ -92,8 +92,9 @@ void DisconnectHandler(BLEDevice central) {
   BLE.advertise();
 }
 
-void setupBLE(float* wbptr) {
-  dyn_weights = wbptr;
+void setupBLE(DATA_TYPE* wbptr) {
+  dyn_weights = (float*) wbptr;  // we only support float for BLE transmission
+  // initialize the BLE hardware
   // begin initialization
   if (!BLE.begin()) {
 #if DEBUG

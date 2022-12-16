@@ -154,8 +154,8 @@ void connectPeripheral() {
   Serial.println("Peripheral disconnected");
 }
 
-void setupBLE(float* wbptr) {
-  dyn_weights = wbptr;
+void setupBLE(DATA_TYPE* wbptr) {
+  dyn_weights = (float*) wbptr;    // we only support float for BLE transmission
   // initialize the BLE hardware
   BLE.begin();
 
