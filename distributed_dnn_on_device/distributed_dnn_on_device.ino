@@ -14,7 +14,7 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE SLAVE // Which device is being exported: MASTER or SLAVE?
 #define DEBUG 0
 
 /*
@@ -166,6 +166,13 @@ void setup() {
 
   Serial.begin(9600);
   delay(5000);
+
+// unsupported config handling
+#ifdef DATA_TYPE_DOUBLE && USE_DISTRIBUTED_WEIGHTS
+  Serial.println("Sorry, we dont support DOUBLE precision with distributed learning, only FLOAT is allowed");
+  Serial.println("You can use DOUBLE for single device training");
+  exit(0);
+#endif
 
   // We need to count how many weights and bias we need to transfer
   // the code is only for Fully connected layers
