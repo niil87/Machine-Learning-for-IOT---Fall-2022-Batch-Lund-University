@@ -5,6 +5,9 @@
 
 Preview of the dataset used in the project, consisting of three classes.
 
+Short video summary: https://youtu.be/R9aJWVb7WeA
+Extended video summary: https://youtu.be/rY36eqMTn_Y
+
 ### Introduction
 This repository contains the code and assets used for the project in the ML IoT course @ LTH. Our project aims to perform on-device facial recognition and classification using the Arduino camera, by utilizing distributed on-device DNN learning.
 
