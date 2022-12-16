@@ -1,7 +1,7 @@
 // Code developed by Nikhil Challa and Simon Erlandsson as part of ML in IOT Course - year : 2022
 
-#define MASTER 1
-#define SLAVE 2
+#define LEADER 1
+#define WORKER 2
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,11 +14,11 @@ extern const int first_layer_input_cnt;
 extern const int classes_cnt;
 
 /* ------- CONFIG ------- */
-#define DEVICE_TYPE MASTER // Which device is being exported: MASTER or SLAVE?
+#define DEVICE_TYPE WORKER // Which device is being exported: LEADER or WORKER?
 #define DEBUG 0
 
 /*
- *  Should MASTER and SLAVE use different datasets? Ex. one label is only present in the training set
+ *  Should LEADER and WORKER use different datasets? Ex. one label is only present in the training set
  *  for one of the devices. Makes the distribution more obvious.
  */
 #define USE_BIASED_DATASETS 1
@@ -67,9 +67,9 @@ static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 /* ------- END CONFIG ------- */
 
 // Training and Validation data
-#if USE_BIASED_DATASETS && DEVICE_TYPE == MASTER
+#if USE_BIASED_DATASETS && DEVICE_TYPE == LEADER
 #include "cnn_data_biased_1.h"  
-#elif USE_BIASED_DATASETS && DEVICE_TYPE == SLAVE
+#elif USE_BIASED_DATASETS && DEVICE_TYPE == WORKER
 #include "cnn_data_biased_2.h"
 #else
 #include "cnn_data.h"  
@@ -77,11 +77,11 @@ static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
     
 #include "NN_functions.h" // Neural Network specific functions and definitions
 
-#if DEVICE_TYPE == MASTER
+#if DEVICE_TYPE == LEADER
 #define NBR_CENTRALS 1 // Config
 #include "BLE_peripheral.h"
 
-#elif DEVICE_TYPE == SLAVE
+#elif DEVICE_TYPE == WORKER
 #define CENTRAL_ID 1 // Config
 #include "BLE_central.h"
 #endif
@@ -96,8 +96,8 @@ void destroy() {
   while (1) ;
 }
 
-/* Called by BLE for MASTER when all weights from SLAVE(s) have been received */
-#if DEVICE_TYPE == MASTER
+/* Called by BLE for LEADER when all weights from WORKER(s) have been received */
+#if DEVICE_TYPE == LEADER
 void aggregate_weights() {
 #if DEBUG
   Serial.println("Aggregating");
@@ -107,8 +107,8 @@ void aggregate_weights() {
   printAccuracy();
 
 #if USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
-  // Merge incoming weights with masters stored weights
-  // Also exports the new weights to slave(s)
+  // Merge incoming weights with leader stored weights
+  // Also exports the new weights to worker(s)
   packUnpackVector(AVERAGE);
 #endif
 
@@ -119,12 +119,12 @@ void aggregate_weights() {
 
 /* Called by BLE when all weights have been received/aggregated */
 void do_training() {
-#if DEVICE_TYPE == MASTER || !ENABLE_BLE
+#if DEVICE_TYPE == LEADER || !ENABLE_BLE
   if (iter_cnt >= EPOCH) destroy();
 #endif
 
-// Slave has to unpack from BLE while this is done in the aggregation for the master
-#if DEVICE_TYPE == SLAVE && USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
+// Worker has to unpack from BLE while this is done in the aggregation for the master
+#if DEVICE_TYPE == WORKER && USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   packUnpackVector(UNPACK);
   Serial.println("Accuracy using incoming weights:");
   printAccuracy();
@@ -151,7 +151,7 @@ void do_training() {
 
   // pack the vector for bluetooth transmission
   forwardProp();
-#if DEVICE_TYPE == SLAVE || !ENABLE_BLE
+#if DEVICE_TYPE == WORKER || !ENABLE_BLE
 #if USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   packUnpackVector(PACK);
   Serial.println("Accuracy after local training:");
