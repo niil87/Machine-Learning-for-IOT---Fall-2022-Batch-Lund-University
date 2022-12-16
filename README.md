@@ -6,6 +6,7 @@
 Preview of the dataset used in the project, consisting of three classes.
 
 Short video summary: https://youtu.be/R9aJWVb7WeA
+
 Extended video summary: https://youtu.be/rY36eqMTn_Y
 
 ### Introduction
