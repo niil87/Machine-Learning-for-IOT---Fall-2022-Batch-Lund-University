@@ -62,7 +62,7 @@ extern const int classes_cnt;
 static const int NN_def[] = {first_layer_input_cnt, 20, classes_cnt};
 
 // this is to set the precision for weight/bias in NN
-#define DATA_TYPE_DOUBLE  // Valid values:  DATA_TYPE_DOUBLE , DATA_TYPE_FLOAT
+#define DATA_TYPE_FLOAT  // Valid values:  DATA_TYPE_DOUBLE , DATA_TYPE_FLOAT
 
 /* ------- END CONFIG ------- */
 
