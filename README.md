@@ -9,6 +9,9 @@ Short video summary: https://youtu.be/R9aJWVb7WeA
 
 Extended video summary: https://youtu.be/rY36eqMTn_Y
 
+### Deprecated Language
+Note that the terms "slave" and "master" are being used in the video demo. These terms are deprecated and SHOULD NOT be used anymore. In the code, the roles are instead defined as "leader" and "worker".
+
 ### Introduction
 This repository contains the code and assets used for the project in the ML IoT course @ LTH. Our project aims to perform on-device facial recognition and classification using the Arduino camera, by utilizing distributed on-device DNN learning.
 
@@ -28,16 +31,16 @@ The project was mainly done by Simon Erlandsson and Nikhil Challa, with some con
 
 Nikhil worked on creating a framework for the trainable neural network written in C. The outcome is a fully customizable (in terms of layer structure) effective implementation of forward- and backward propagation using ReLU or Softmax activation functions.
 
-Nikhil also worked on providing functions for extracting the weights and biases from the NN into a contiguous vector, ready for transmission. This also included merging existing NN weights (averaging) with the incoming vector (master), as well as simply replacing the current weights with the incoming (slave).
+Nikhil also worked on providing functions for extracting the weights and biases from the NN into a contiguous vector, ready for transmission. This also included merging existing NN weights (averaging) with the incoming vector (leader), as well as simply replacing the current weights with the incoming (worker).
 
 Simon mainly worked on the Bluetooth communication between the IoT devices. The result is a framework capable of transmitting arrays of an arbitrary size and type between two devices, by sending the data in smaller batches (packets) and combining the batches on the receiving end. The framework also includes turn based sending and receiving, with the repeating structure:
 
-- Master -> weights to slave
-- Slave & master trains
-- Slave -> weights to master
-- Master aggregates (merges) the incoming weights with its own
+- Leader -> weights to worker
+- Worker & leader trains
+- Worker -> weights to leader
+- Leader aggregates (merges) the incoming weights with its own
 
-The code is generalized to allow more than two devices (i.e. more than one slave, but still only one master), but due to time constraints testing and further development of this feature was paused.
+The code is generalized to allow more than two devices (i.e. more than one worker, but still only one leader), but due to time constraints testing and further development of this feature was paused.
 
 Simon also worked on the Tensorflow and Python parts of the project, consisting of the image collection, image transformation, model creation, feature extraction and export, and isolated DNN training and validation. The earlier group members had started working partially on the tasks, so some of their contributions were reused.
 
@@ -56,8 +59,8 @@ Explanation of the purpose of most of the folders/files in the repository.
   - Images_Transformed_565_160_120: numpy arrays of the output above, transformed to resolution 160x120 with 565 image coding. Done using "Misc/transform_camera_images.ipynb"
 
 - Distributed_DNN_On_Device: the final Arduino code: both NN and BLE
-  - BLE_central.h: BLE code for slave
-  - BLE_peripheral.h: BLE code for master (the one merging the weights)
+  - BLE_central.h: BLE code for worker
+  - BLE_peripheral.h: BLE code for leader (the one merging the weights)
   - cnn_data_biased_*.h: The biased data used to verify that the model is  improving by utilizing the distribution
   - cnn_data.h: Full data, i.e. whole dataset is present in the file
   - distributed_dnn_on_device.ino: Main file, controller between BLE and NN

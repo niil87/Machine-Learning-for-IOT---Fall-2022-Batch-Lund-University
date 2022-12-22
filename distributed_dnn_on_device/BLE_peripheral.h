@@ -106,7 +106,7 @@ void setupBLE(DATA_TYPE* wbptr) {
   BLE.setEventHandler(BLEConnected, ConnectHandler);
   BLE.setEventHandler(BLEDisconnected, DisconnectHandler);
   // set advertised local name and service UUID:
-  BLE.setLocalName("MLMaster");
+  BLE.setLocalName("MLLeader");
   BLE.setAdvertisedService(weightsService);
 
   // add the characteristic to the service
@@ -123,7 +123,7 @@ void setupBLE(DATA_TYPE* wbptr) {
   // start advertising
   BLE.advertise();
 
-  // Let master train once before sending weights, to not just send all zeros
+  // Let leader train once before sending weights, to not just send all zeros
   do_training();
 
 #if DEBUG
@@ -166,7 +166,7 @@ void loopBLE() {
       return;
     }
 
-    // Master needs to do something
+    // Leader needs to do something
     if (receivedTurn == 0) {
       uint8_t batch_id = writeCharacteristic[1];
 

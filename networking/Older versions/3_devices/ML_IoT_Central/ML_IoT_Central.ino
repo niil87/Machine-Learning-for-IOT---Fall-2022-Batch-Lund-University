@@ -67,7 +67,7 @@ void listenWeights(BLEDevice peripheral) {
       if (weightsData.turn == CENTRAL_ID) {
         weightsData.turn = 0;
   
-        Serial.println("Updating weights and sending to master");
+        Serial.println("Updating weights and sending to leader");
         weightsData.w[0]++;
         weightsData.w[1]++;
         weightsData.w[2]++;
@@ -107,7 +107,7 @@ void loop() {
     Serial.print(peripheral.advertisedServiceUuid());
     Serial.println();
 
-    if (peripheral.localName() != "MLMaster") {
+    if (peripheral.localName() != "MLLeader") {
       return;
     }
 

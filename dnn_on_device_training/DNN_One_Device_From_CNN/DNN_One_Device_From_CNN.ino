@@ -140,7 +140,7 @@ void setup() {
     forwardProp();
     packUnpackVector(0);
     // send bluetooth
-    // do averaging if its master
+    // do averaging if its leader
     packUnpackVector(2);
     // receive bluetooth
     packUnpackVector(1);

@@ -129,7 +129,7 @@ void setup() {
   BLE.setEventHandler(BLEConnected, ConnectHandler);
   BLE.setEventHandler(BLEDisconnected, DisconnectHandler);
   // set advertised local name and service UUID:
-  BLE.setLocalName("MLMaster");
+  BLE.setLocalName("MLLeader");
   BLE.setAdvertisedService(weightsService);
 
   // add the characteristic to the service
@@ -165,7 +165,7 @@ void loop() {
     old_time = current_time;
     int8_t receivedTurn = writeCharacteristic[0];
 
-    // Master needs to do something
+    // Leader needs to do something
     if (receivedTurn == 0 || timeout) {
       uint8_t batch_id = writeCharacteristic[1];
       // Add the received weights to our weight vector

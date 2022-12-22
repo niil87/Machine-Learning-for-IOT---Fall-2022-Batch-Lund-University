@@ -53,7 +53,7 @@ void setup() {
   BLE.setEventHandler(BLEConnected, ConnectHandler);
   BLE.setEventHandler(BLEDisconnected, DisconnectHandler);
   // set advertised local name and service UUID:
-  BLE.setLocalName("MLMaster");
+  BLE.setLocalName("MLLeader");
   BLE.setAdvertisedService(weightsService);
 
   // add the characteristic to the service

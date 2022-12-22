@@ -123,7 +123,7 @@ void do_training() {
   if (iter_cnt >= EPOCH) destroy();
 #endif
 
-// Worker has to unpack from BLE while this is done in the aggregation for the master
+// Worker has to unpack from BLE while this is done in the aggregation for the leader
 #if DEVICE_TYPE == WORKER && USE_DISTRIBUTED_WEIGHTS && ENABLE_BLE
   packUnpackVector(UNPACK);
   Serial.println("Accuracy using incoming weights:");

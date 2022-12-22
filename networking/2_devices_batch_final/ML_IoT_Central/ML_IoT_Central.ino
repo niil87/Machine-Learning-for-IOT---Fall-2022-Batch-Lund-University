@@ -97,7 +97,7 @@ void loopPeripheral() {
         }
       }
 
-      // Does the master want our weights?
+      // Does the leader want our weights?
       if (bleData.turn == CENTRAL_ID && (bleData.batch_id == NBR_BATCHES_ITER - 1 || CENTRAL_ID != 1)) {
         bleData.turn = 0;
 
@@ -203,7 +203,7 @@ void loop() {
     Serial.println();
 #endif
 
-    if (peripheral.localName() != "MLMaster") {
+    if (peripheral.localName() != "MLLeader") {
       return;
     }
 
