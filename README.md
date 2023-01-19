@@ -1,5 +1,6 @@
-# EITP40 - Machine Learning for IoT @ LTH 2022 Project
-## By: Simon Erlandsson & Nikhil Challa
+# Distributed Learning with deep neural networks and bluetooth
+## EITP40 - Machine Learning for IoT @ LTH 2022 Project
+### By: Simon Erlandsson & Nikhil Challa
 
 <img src="dataset_preview.png" alt="Preview of dataset]" width="300"/>
 
