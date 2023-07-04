@@ -1,6 +1,8 @@
-# Distributed Learning with deep neural networks and bluetooth
+# Distributed Learning with configurable Deep Neural Networks and Bluetooth, implemented on IoT Devices using C Language
 ## EITP40 - Machine Learning for IoT @ LTH 2022 Project
 ### By: Simon Erlandsson & Nikhil Challa
+
+When people refer to ML models, usually the models are built using Python to perform training (not on IoT Devices), with the inference either performed in Python (not on IoT Devices) or via TinyML on IoT Devices. Due to both memory and processing constraints on IoT Devices, we explored the possibility of building the model itself in C along with supporting both training and inference on the IoT Device itself. We also introduce Bluetooth communication protocol to facilitate distributed learning, with the end goal to achieve training via distributed weights and inference on individual IoT devices.
 
 <img src="dataset_preview.png" alt="Preview of dataset]" width="300"/>
 
